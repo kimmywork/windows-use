@@ -1,0 +1,27 @@
+// WinUse.PoC.Input.csproj — 第二轮 B：侵入式实测工程（A-05 中文输入 + A-02 负坐标可达性）
+//
+// 注意：不可使用 `dotnet new console -f net10.0-windows`（SDK 10 不接受该形式），
+// 因此本文件手工编写，TargetFramework 直接写 net10.0-windows。
+// 不引用 WindowsForms / WPF：剪贴板走原生 API，避免引入桌面运行包依赖。
+
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>WinUse.PoC.Input</RootNamespace>
+    <AssemblyName>WinUse.PoC.Input</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 与 WinUse.PoC 保持同一版本，便于结果对照 -->
+    <PackageReference Include="FlaUI.Core" Version="5.0.0" />
+    <PackageReference Include="FlaUI.UIA3" Version="5.0.0" />
+  </ItemGroup>
+
+</Project>

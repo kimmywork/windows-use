@@ -190,6 +190,45 @@ STALE_CONTEXT = re.compile(r"能力|capabilit|总数|条数|个工具|合计")
 STALE_EXEMPT = re.compile(r"旧稿|旧写|原写|旧统计|已更正|已作废|更正记录|作废|~~\d")
 
 
+# --- 09 任务 ID 完整性（防"定义在编辑中悄悄消失"） ---
+# 存在理由：09 的任务表曾因一次 Edit 的锚点包含了要保留的正文，把 T-S1 整行吞掉，
+# 而在甘特图/依赖图/正文里 T-S1 仍被引用 —— 引用还在、定义没了，肉眼极难发现。
+ROADMAP = DOCS / "09-roadmap.md"
+TASK_ID_RE = re.compile(r"\b(T-[A-Z]{1,3}\d{1,3})\b")
+# 定义行形如：| **T-S1** | ... |
+TASK_DEF_RE = re.compile(r"^\|\s*\*\*(T-[A-Z]{1,3}\d{1,3})\*\*\s*\|")
+
+
+def scan_task_ids() -> tuple[set[str], set[str], list[str]]:
+    """返回 (已定义 ID, 被引用 ID, 编号断号提示)。"""
+    text = ROADMAP.read_text(encoding="utf-8")
+    defined: set[str] = set()
+    for ln in text.splitlines():
+        m = TASK_DEF_RE.match(ln.strip())
+        if m:
+            defined.add(m.group(1))
+    referenced = set(TASK_ID_RE.findall(text))
+
+    # 同一前缀内的编号断号（只提示，不算错——可能确为有意留空）。
+    # 注意 ID 形如 T-A8 / T-C12：前缀是字母段，不能按 "-" 切分。
+    gaps: list[str] = []
+    by_prefix: dict[str, list[int]] = {}
+    for tid in defined:
+        m = TASK_ID_RE.fullmatch(tid)
+        if not m:
+            continue
+        pm = re.fullmatch(r"T-([A-Z]{1,3})(\d{1,3})", tid)
+        if not pm:
+            continue
+        by_prefix.setdefault("T-" + pm.group(1), []).append(int(pm.group(2)))
+    for p, nums in sorted(by_prefix.items()):
+        nums.sort()
+        missing = [n for n in range(nums[0], nums[-1] + 1) if n not in nums]
+        if missing:
+            gaps.append(f"{p}-* 缺号 {missing}（已有 {nums[0]}~{nums[-1]}）")
+    return defined, referenced, gaps
+
+
 def scan_stale() -> list[dict]:
     """扫描已过期但可能残留在文档里的数字。
 
@@ -395,6 +434,25 @@ def main() -> int:
     print("\n [规则] 文档里不得写死能力条数，一律写成引用式：")
     print("        「条数见 07 §0.7 tier 列（权威源），以 tools/check_numbers.py 复核为准」")
 
+    # --- 09 任务 ID 完整性 ---
+    print("\n [09 任务 ID 完整性]")
+    task_bad: list[str] = []
+    if not ROADMAP.exists():
+        print("   ⚠️  找不到 09-roadmap.md，跳过")
+    else:
+        defined, referenced, gaps = scan_task_ids()
+        dangling = sorted(referenced - defined)
+        print(f"   已定义 {len(defined)} 个任务 ID ｜ 全文引用 {len(referenced)} 个")
+        if dangling:
+            task_bad.append("dangling")
+            print(f"   ❌ 被引用但没有定义行（{len(dangling)} 个）—— 定义在编辑中消失了：")
+            for t in dangling:
+                print(f"        - {t}")
+        else:
+            print("   ✅ 所有被引用的任务 ID 都有定义行")
+        for g in gaps:
+            print(f"   ⚠️  编号断号：{g}")
+
     # --- core 清单 vs tier 列 对账 ---
     print("\n [core 清单 vs tier 列 对账]")
     declared, head = parse_declared_core_list()
@@ -433,7 +491,7 @@ def main() -> int:
         print(f"   tier：core {ti['core']} / extended {ti['extended']} / advanced {ti['advanced']} / future {ti['future']}")
 
     print("\n" + "=" * 68)
-    n_bad = len(problems) + len(bad) + len(stale) + len(core_drift) + len(idx_bad)
+    n_bad = len(problems) + len(bad) + len(stale) + len(core_drift) + len(idx_bad) + len(task_bad)
     if n_bad == 0:
         print(" 结论：✅ 通过 —— 所有写死的数字都与 07 §0.7 权威表一致")
         return 0
