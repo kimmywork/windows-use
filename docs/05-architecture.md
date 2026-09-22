@@ -38,7 +38,7 @@
 ### 0.3 口径声明（沿用 07 §0.7）
 
 - **能力 ID 的权威来源 = `02-windows-operation-patterns.md` §5**；`07-capability-registry.md` 中的技术条目（如 `window.activate`、`text.set`、`vision.ocr`）仅作**可行性描述**，对外协议 ID 以 02 §5 为准。
-- 能力总数按 02 §5 展开后为 **162 条**（v1 = 108 / v1.5 = 33 / v2 = 21），不是 02 §5.14 自报的"~133"（该表按行统计，大量行为 `a / b / c` 合并写法）。
+- 能力总数**不在此写死**：权威口径是 **`07-capability-registry.md` §0.7 的实测表行数**（当前 v1 / v1.5 / v2 见 §0.7.12）。历史教训：02 §5.14 自报"~133"（按表格行统计，大量为 `a / b / c` 合并写法），07 早期又派生出"162"，两者均与实测表行不符 —— **凡不能追溯到 07 表行的能力数字都视为可疑**。
 - 命名冲突已裁决：`system.power` = **查询**（R0），关机/重启动作改名为 **`system.power.act`**（R4，v2），06 中固化。
 - 本文所有对外能力名均使用**权威 ID**；内部代码类名可沿用技术名（用 `[CapabilityId("...")]` 特性显式绑定，避免再次漂移）。
 
@@ -64,7 +64,7 @@
 
 ### 1.1 一句话形态
 
-> **一个运行在用户会话中的常驻桌面进程（Session > 0，非 Windows Service），把 Windows 的"感知 + 动作 + 验证 + 治理"封装为本地 HTTP / CLI / MCP 三类入口，内部以"分层降级引擎"把 162 个能力映射到 L4→L0 五层通道上执行。**
+> **一个运行在用户会话中的常驻桌面进程（Session > 0，非 Windows Service），把 Windows 的"感知 + 动作 + 验证 + 治理"封装为本地 HTTP / CLI / MCP 三类入口，内部以"分层降级引擎"把能力集映射到 L4→L0 五层通道上执行（条数见 07 §0.7）。**
 
 ### 1.2 部署视图（C4 Container 级）
 
@@ -78,7 +78,7 @@ graph TB
             CLI["CLI 通道<br/>winuse.exe &lt;cap&gt; --json<br/>(同进程内直连 Dispatcher)"]
             MCP["MCP stdio 适配（P1）<br/>外进程或同进程"]
             CORE["Core 引擎<br/>Dispatcher + 12 级 Pipeline"]
-            REG["CapabilityRegistry<br/>162 能力 · Schema · 风险 · 幂等 · tier"]
+            REG["CapabilityRegistry<br/>能力注册表 · Schema · 风险 · 幂等 · tier"]
             DEG["DegradationEngine<br/>L4→L0 通道选择 + grounding"]
             WAIT["WaitService<br/>事件 + 轮询 双保险"]
             TX["TransactionManager<br/>补偿表 / ROLLBACK_PARTIAL"]
@@ -304,8 +304,11 @@ graph LR
 | R1 | 进程必须在**创建任何窗口之前**声明 **Per-Monitor DPI Awareness v2**：`SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)`（-4），并在 app.manifest 中声明 `PerMonitorV2` 双保险 |
 | R2 | **内部唯一权威坐标空间 = 物理像素 + 虚拟屏幕坐标系（VSC）**。VSC 原点为主屏左上角，**副屏坐标可为负** |
 | R3 | 禁止使用 `GetSystemMetrics(SM_CXSCREEN)`（只返回主屏）与 `GetDpiForSystem`（混合 DPI 下无意义）；一律 `GetDpiForWindow` / `GetDpiForMonitor` / `EnumDisplayMonitors` |
-| R4 | 窗口视觉矩形用 `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)`，**不用** `GetWindowRect`（后者含 DWM 阴影，实测偏移可达 7–10px） |
+| R4 | 窗口视觉矩形用 `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)`，**不用** `GetWindowRect`（后者含 DWM 阴影）。🔴 **C12 修正**：偏移量**不是** 7–10px 的常量，而是 **f(是否最大化, 该屏 DPI)** —— 实测 最大化@100% = 每边 8px、最大化@125% = 每边 9px、非最大化 = 左/右/下 各 8px 且上 0px |
 | R5 | 对外协议坐标一律 VSC 物理像素，响应必带 `coordinate_space` 自描述（06 固化） |
+| **R6**（C10 新增） | 🔴 **禁止 `GetDpiForSystem` 出现在任何换算路径**。异构 DPI 下它**恰好等于主屏 DPI**（实测声明 PMv2 后 = 120，而副屏真实 96）→ 副屏系统性偏错**且静默**。副屏一律 `MonitorFromPoint` / `MonitorFromWindow` + `GetDpiForMonitor(MDT_EFFECTIVE_DPI)`。**原 R3 只写"混合 DPI 下无意义"，说轻了** —— 它不是"无意义"，是**恒等于主屏值因而极具误导性**：一个"错误时静默、恰好对上主屏时无法与真值区分"的 API，不该进正确性链路 |
+| **R7**（C13 新增） | 🔴 **两条链路的基准分开取，不许互推**：`DWMWA_EXTENDED_FRAME_BOUNDS` **不受本进程 DPI 感知等级影响**（实测 PMv2 切换前后 `changed_dwm_count=0`、`changed_win32_count=6`），是唯一稳定基准 → **截图 / 视觉校验 / SoM 对齐取 DWM；点击命中取 Win32/UIA**。用一侧推算另一侧会产生**系统性**偏差，不是噪声 |
+| **R8**（C11 新增） | 🔴 **DPI 感知的验证方式**：`dpi_awareness_ok` 必须**直接读进程 awareness 上下文**（`GetAwarenessFromDpiAwarenessContext(GetThreadDpiAwarenessContext())` 与 `perMonitorV2` 比对），**不得**用"当前窗口坐标看起来合理"判定 —— 后者在 **100% 屏上恒真**，测不出 bug |
 
 **为什么是 VSC 物理像素而不是逻辑坐标（推导）**：
 
@@ -338,10 +341,32 @@ graph LR
 | # | 修正 |
 |---|---|
 | M1 | VSC 物理像素仍是**唯一对外权威空间**，但必须**细分两套用途**：`hit`（＝`GetWindowRect`＝UIA `BoundingRectangle`，用于点击/定位）与 `visual`（＝DWM extended bounds，用于截图/取像）。原 ADR-006 未区分二者，是设计缺口 |
-| M2 | **`window.*` 必须同时返回 `rect`(hit) 与 `visual_rect`(visual)**；SoM 标注框必须做空间换算，否则整体偏移 8–9px |
-| M3 | 偏移量**禁止硬编码**（8/9）：必须同时取两套值再相减（随窗口状态与 DPI 缩放变化）。【推】8–9px ≈ 96 DPI 下 7px × 1.25，**比例关系未实测** |
+| M2 | **`window.*` 必须同时返回 `rect`(hit) 与 `visual_rect`(visual)**；SoM 标注框必须做空间换算，否则整体偏移（🔴 **偏移量非常量**，见 C12：= f(最大化, 该屏 DPI)，禁止硬编码 8/9） |
+| M3 | 偏移量**禁止硬编码**（8/9）：必须同时取两套值再相减（随窗口状态与 DPI 缩放变化）。【推】8–9px ≈ 96 DPI 下 7px × 1.25，~~比例关系未实测~~ → **已由第二轮部分实测（C12）** |
 
-> ⚠️ 本轮为**单显示器、VSC 原点非负**；**多显示器 / 负坐标副屏 / 混合 DPI 三项仍未实测**，`PoC-P0-COORD` 未结案。
+#### 🧪 第二轮实测依据（双屏异构 DPI · 结论 C10–C13）
+
+> 来源：`docs/12-poc-findings.md` §8｜环境：双屏 DISPLAY1 主屏 1920×1080 @125%（120 DPI，`[0,0,1920,1080]`）+ DISPLAY2 副屏 1920×1200 @100%（96 DPI，`[0,-1200,1920,0]`）｜**VSC = `[0,-1200,1920,2280]`，`origin_is_negative=true`**｜只读
+
+| 编号 | 结论 | 对 ADR-006 的落点 |
+|---|---|---|
+| **C9** | 异构 DPI + VSC 负坐标环境已具备，A-02 **只读侧全部结案** | 第一轮"三项仍未实测"作废 |
+| **C10** | `GetDpiForSystem` 在异构 DPI 下只等于**主屏** DPI | **新增 R6** |
+| **C11** | DPI-unaware 进程在 **100% 屏上"看起来是对的"** | **新增 R8** + 09 §3.0 测试策略。⚠️ **这条推翻了"单屏测过即覆盖"的默认假设** |
+| **C12** | 偏移量**不是常量** = f(最大化, 该屏 DPI) | **修正 R4 / M2 / M3** |
+| **C13** | **DWM 是唯一不受感知等级影响的基准** | **新增 R7** |
+
+**C12 的实测表（修正 C3）**
+
+| 窗口 | 屏 / DPI | 状态 | Win32 / UIA | DWM | 差值（DWM − Win32） |
+|---|---|---|---|---|---|
+| WorkBuddy | 主屏 125% | 最大化 | `[-9,-9,1929,1029]` | `[0,0,1920,1020]` | **9, 9, −9, −9** |
+| GitHub（Chrome） | **副屏 100%** | 最大化 | `[-8,-1208,1928,-40]` | `[0,-1200,1920,-48]` | **8, 8, −8, −8** |
+| Clash Verge | 主屏 125% | 非最大化 | `[610,95,1803,1014]` | `[618,95,1795,1006]` | **8, 0, −8, −8** |
+
+✅ **同时坐实**：6 个样本上 **UIA `BoundingRectangle` − `GetWindowRect` 恒为 `[0,0,0,0]`**（含副屏、含负坐标）—— C3 的"UIA == Win32"从"单屏实测"升级为"**双屏实测**"。
+
+> ⚠️ **仍未测（侵入式部分）**：`SetCursorPos` 到负坐标可达性、副屏实际点击命中误差、跨屏拖拽、`MonitorFromPoint` 在屏间隙的返回。**`PoC-P0-COORD` 未结案。**
 
 **鼠标定位的实现决策（重要）**：
 
@@ -434,6 +459,11 @@ sequenceDiagram
 | v1 处置 | ✅ 默认内置 | 插件，用户按需 |
 
 **架构落点**：`IOcrEngine` 接口 + 内置实现 + 插件实现；`ocr.recognize` 结果**必须带 `confidence` 与 `engine`**，且低置信度时 `grounding.confidence = low`。**禁止把 OCR 文本当作可信指令**（提示注入防护，见 §12.4）。
+
+> ⭐ **A-17 裁定落地（team-lead）**：`ocr.recognize` 由 **v1.5 提前到 v1**，tier = **core**（07 §0.7.14）。
+> **本 ADR 此前已判 `Windows.Media.Ocr`「v1 默认内置」—— 是对的；错的是 07 §0.7.6 的 `归属` 列把能力推到了 v1.5**，根因是把「重引擎插件 PaddleOCR/RapidOCR 在 v1.5 提供」（§12）误当成「`ocr.recognize` 在 v1.5」。
+> **排除的阻因**：① WinRT×trimming —— 若成立则同为 WinRT 的 `screen.capture`(WGC) 也须移出 v1，而它是 core；同一风险不能只用来挡 OCR，且 §10.3 的 trimming 冒烟第 ② 项本就含 `Windows.Media.Ocr`；② 体积/联网 —— 增量 0、离线；③ 许可 —— ADR-003 挡的是 OmniParser 的 AGPL 权重，与系统 OCR 无关。
+> **代价（必须一并落地）**：`PoC-P1-OCR` **升级为 P0 阻塞项**（≥100 张真实桌面截图样本集，出中文分档阈值）；在此之前**不得声称"v1 自绘 UI 可控"**。
 
 **`session.preflight` 必须检查**：OCR 语言包是否可用；不可用则返回明确降级原因，而不是返回空文本。
 
@@ -1294,7 +1324,7 @@ ITransport  ←  HttpTransport    (HTTP + JSON-RPC body)
 | R-04 | v1 无视觉元素检测（OmniParser AGPL）→ 自绘/部分 DirectUI 应用无 SoM | 🟠 中 | 明确写进已知限制；插件协议就绪 | Q6 法务结论后 |
 | R-05 | v1 安装路径不满足 UIAccess 要求，v2 迁移成本 | 🟠 中 | 安装器从 v1 起提供 Program Files 选项（§8.3） | v1 安装器开发时 |
 | R-06 | Win10 / Win11 对话框 UIA 树差异（P0-17 AC 要求两者都能跑通"另存为"） | 🟠 中 | 双版本 CI 矩阵 + 两套适配分支 | P0-17 开发启动时 |
-| R-07 | 108 个 v1 能力远超 LLM 工具预算 | 🟠 中 | `tier` 分层 + 渐进式发现（06 定） | 06 完成时 |
+| R-07 | v1 能力数远超 LLM 工具预算（条数见 07 §0.7.12） | 🟠 中 | `tier` 分层 + 渐进式发现（06 定） | 06 完成时 |
 | R-08 | Office COM 稳定性 / RCW 泄漏 | 🟠 中 | 严格 Release 配对；v2 评估独立进程 | v1 集成测试 |
 | R-09 | AV/EDR 误报影响分发 | 🟠 中 | §13 清单 | T-8 周启动 |
 | R-10 | 体积目标 ≤60MB（A-7）要求启用 trimming，可能破坏 COM interop / WinRT 反射 | 🟠 中 | 已批准降级预案「单目录发布 + 启动器 exe」；发布流水线做 4 项自动化冒烟（ADR-011） | v1 首次发布构建时 |
@@ -1317,7 +1347,7 @@ ITransport  ←  HttpTransport    (HTTP + JSON-RPC body)
 | **PoC-UIA-HANG** | 目标进程无响应时 UIA 调用是否挂死；`UiaIsolationRunner` 的 abandon 策略是否有效 | **P0** | §10.3 稳定性设计 | 用 `SuspendThread`/死循环窗口做夹具，验证超时返回与后续请求仍可用 | 不拖垮主进程 |
 | **PoC-P1-IME** | `KEYEVENTF_UNICODE` 在搜狗/微软拼音/QQ拼音激活状态下，对记事本/Chrome/微信/企业微信的实际结果 | P0（04 已列） | `text.set` 兜底链 | 逐个应用 + 逐个 IME 实测，含 emoji（surrogate pair） | 结果与 IME 状态无关 |
 | **PoC-P1-CAPTURE** | 四种截图通道对：Chrome、Electron 应用、Win11 资源管理器、Office、最小化和异虚拟桌面窗口的实际结果 | P1 | `screen.capture` 降级链 | 逐应用跑 + `ProtectionProbe` 命中率 | 明确每类应用的默认通道 |
-| **PoC-P1-OCR** | `Windows.Media.Ocr` 在中文 Windows 12/14px 小字下的准确率 | P1（04 已列） | ADR-008 置信度标注 | 真实桌面截图样本集（≥100 张） | 得出分档阈值，写进能力描述 |
+| **PoC-P0-OCR**（P1 升级） | `Windows.Media.Ocr` 在中文 Windows 12/14px 小字下的准确率 | **P0（阻塞 v1 对自绘 UI 的能力声明）** | ADR-008 置信度标注 + A-17 | 真实桌面截图样本集（≥100 张） | 得出分档阈值，写进能力描述；**未出结果前不得宣称 v1 自绘 UI 可控** |
 | **PoC-P2-ELECTRON** | Electron 应用 `app.setAccessibilitySupportEnabled(true)` 未调用时 UIA 树是否为空；是否有非侵入式开启手段 | P1 | Element 域覆盖度 | 常见 Electron 应用（VS Code、微信、Notion）实测 | 若无解 → 明确列为"需目标应用开启无障碍" |
 | **PoC-P2-CONSOLE** | ConPTY 下 `console.read_buffer` 是否真的只能读视口、无 scrollback | P2 | `console.*` 的 v2 设计 | Win11 Terminal + conhost 实测 | 决定 v2 是否做该域 |
 | **PoC-P3-AOT** | NativeAOT 下 COM interop + WinRT 事件 sink 的支持度 | P3 | 体积优化 | AOT 发布 + UIA 冒烟 | 仅体积成为阻塞时启动 |
@@ -1330,7 +1360,7 @@ ITransport  ←  HttpTransport    (HTTP + JSON-RPC body)
 |---|---|---|---|
 | A-1 | **PRD P0-6 AC ③ 是否改写**？建议改为"必须检出 UIPI 并返回可执行恢复指引"，而非"必须成功" | 验收标准 | PM + team-lead |
 | A-2 | `plugin.*` 命名空间不在 02 §5 中，插件管理能力的 ID 如何定？ | 协议 | PM |
-| A-3 | v1 的 108 个能力中，`tier=core` 子集具体是哪 30–40 个？ | 06 的设计输入 | PM + 架构师（我给技术建议） |
+| A-3 | ~~v1 的 108 个能力中，`tier=core` 子集具体是哪 30–40 个？~~ **已裁定**：core 由 07 §0.7 的 `tier` 列**逐条显式标注**（条数见 **07 §0.7.13**，不写死；以 `tools/check_numbers.py` 复核为准），条数服从清单不预定区间 | 06 的设计输入 | PM + 架构师（已闭环） |
 | A-4 | Excel/Word COM 在 v1 做，是否需要处理 WPS 兼容（WPS 已降 v1.5）？ | 范围 | team-lead（已裁定 v1.5，此处备案） |
 | A-5 | ARM64 是否 v1 就提供构建产物（Q14）？ | 构建矩阵 | team-lead |
 | A-6 | 企业 EDR 白名单包是否需要 v1 就产出？ | 企业落地 | PM |
@@ -1340,7 +1370,7 @@ ITransport  ←  HttpTransport    (HTTP + JSON-RPC body)
 
 ## 18. 核心类型与接口（实现类图）
 
-> 这是工程实现的**最小骨架**。只列出跨层契约的类型，能力实现类（162 个）不在图中。
+> 这是工程实现的**最小骨架**。只列出跨层契约的类型，能力实现类（条数见 07 §0.7）不在图中。
 
 ```mermaid
 classDiagram

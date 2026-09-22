@@ -3,7 +3,8 @@
 > **本文档定位**：把 `05-architecture.md` 的架构决策固化为**可直接实现的线格式（wire format）**。
 > 面向两类读者：① WinUse 的 Implementer（照此编码）；② 接入 WinUse 的 Agent 作者（照此调用）。
 >
-> **上游依赖**：`05-architecture.md`（ADR-001~012）、`07-capability-registry.md` §0.7（能力集权威口径：v1=108 / v1.5=33 / v2=21，合计 162）。
+> **上游依赖**：`05-architecture.md`（ADR-001~012）、`07-capability-registry.md` §0.7（能力集权威口径：**v1=100 / v1.5=38 / v2=30，合计 168**；旧稿 108/33/21=162 已按实测行数更正，见 07 §0.7.12）。
+> **`tier` 权威源**：`tier: core|extended|advanced|future` 的**唯一权威源是 07 §0.7 的 `tier` 列**（口径见 07 §0.7.13）。本文档**不自带清单**，只定义协议行为。
 > **命名权威**：能力 ID 以 `07-capability-registry.md` §0.7 为准。
 > **可信度标注**：【实】已核实（附来源）｜【推】推断｜【PoC】待实测。沿用 04/05/07 的体系。
 > **实测基线**：本文档中标注【实】的 Windows 行为数据来自第一轮 PoC —— `poc/poc-results.json` ／ `poc/poc-run.log`；环境 **Windows 11 Build 26200（25H2）｜单显示器 1920×1080 @125%（120 DPI）｜探测进程 IL=Medium、未提权｜C#/.NET 10/FlaUI 5.0.0｜非侵入式只读**。完整结论见 `12-poc-findings.md`。
@@ -43,9 +44,9 @@
 
 ### 1.1 候选对比
 
-| 方案 | 建模 162 个能力 | 一键导出 LLM tools | CLI 等价性 | 流式/长连接 | 生态与调试 | 代价 |
+| 方案 | 建模 167 个能力 | 一键导出 LLM tools | CLI 等价性 | 流式/长连接 | 生态与调试 | 代价 |
 |---|---|---|---|---|---|---|
-| **REST（资源化）** | ❌ 差。162 个动作用资源 URI 表达极其别扭（大量 `POST /actions/...`），本质还是 RPC | 中。需从 OpenAPI 二次转换，且 OpenAPI 对" polymorphic 参数"表达弱 | 差。curl 拼 URI 远不如子命令直观 | 需另建 SSE/WebSocket | ✅ 最好。浏览器可直调、OpenAPI 工具链成熟 | 语义与形式不匹配 |
+| **REST（资源化）** | ❌ 差。167 个动作用资源 URI 表达极其别扭（大量 `POST /actions/...`），本质还是 RPC | 中。需从 OpenAPI 二次转换，且 OpenAPI 对" polymorphic 参数"表达弱 | 差。curl 拼 URI 远不如子命令直观 | 需另建 SSE/WebSocket | ✅ 最好。浏览器可直调、OpenAPI 工具链成熟 | 语义与形式不匹配 |
 | **JSON-RPC 2.0 over HTTP（单端点）** | ✅ 天然。方法名即能力 ID | ✅ 最好。`method` + JSON Schema 可直接映射 OpenAI / Anthropic / MCP tools | ✅ 好。`winuse <method> --param=v` 与 HTTP 走同一 Dispatcher | 需另建 SSE（本方案：SSE 独立于 RPC 端点） | 好。curl 一行可测；抓包即读 | 浏览器地址栏不能直调（可读性略逊 REST） |
 | **gRPC** | ✅ 好 | ❌ 差。protobuf 与 LLM tools 的 JSON Schema 之间需双向转换层 | ❌ 差。需额外 CLI 客户端 | ✅ 最好（原生 streaming） | ❌ 差。本地调试需 grpcurl；浏览器不可用 | 引入 protobuf 工具链 + HTTP/2 依赖，对本机回环场景**收益为负** |
 
@@ -53,7 +54,7 @@
 
 **决定性理由（按权重）**：
 
-1. **能力 ID 与 `method` 一对一**。162 个能力 → 162 个 method，无映射层、无歧义。REST 会退化成"假 REST"（`POST /invoke`），那还不如直接用 RPC。
+1. **能力 ID 与 `method` 一对一**。167 个能力 → 167 个 method，无映射层、无歧义。REST 会退化成"假 REST"（`POST /invoke`），那还不如直接用 RPC。
 2. **导出 LLM tools 是零转换的**。OpenAI / Anthropic / MCP 三家都是 `{name, description, input_schema}` 形态，与 `{method, params}` + JSON Schema 同构（见 §3.4）。这是"Agent 友好"这条产品目标的直接落点。
 3. **CLI 与 HTTP 天然等价**。命令行 `winuse element.find --selector='...'` 直接是 method + 参数，与 HTTP body 走同一个 `CapabilityDispatcher`（05 §11.1）。**不会出现"CLI 能跑、HTTP 不行"的行为分叉**。
 4. gRPC 的 streaming 优势在本机场景中价值有限：我们的事件流用 SSE 足够（§8），且 SSE 比 gRPC stream 更容易被 Agent 侧消费。
@@ -64,7 +65,7 @@
 
 | 端点 | 方法 | 用途 |
 |---|---|---|
-| `POST /v1/invoke` | JSON-RPC 2.0 | **唯一的能力调用端点**（全部 162 个 method） |
+| `POST /v1/invoke` | JSON-RPC 2.0 | **唯一的能力调用端点**（v1 实现 100 个 method；全量设计 168 个） |
 | `GET /v1/events` | SSE | 事件流（v1.5，见 §8） |
 | `GET /v1/health` | — | 健康检查（无鉴权，只返回 `{ok, version, uptime_s, abandon_count}`） |
 | `GET /v1/schema` | — | 全部能力的 JSON Schema 打包（供离线生成 SDK/tools） |
@@ -203,8 +204,8 @@ Agent 接入后**第一个应该调用**的方法（WinUse-Bench 把"首轮是�
 // 响应（节选）
 { "jsonrpc":"2.0", "id":"1", "result": {
   "api_version": "1.0",
-  "total": 108, "returned": 34,
-  "tiers": { "core": 34, "extended": 48, "advanced": 26 },
+  "total": 100, "returned": 46,
+  "tiers": { "core": 46, "extended": 48, "advanced": 6, "future": 68 },
   "capabilities": [
     { "id":"element.find", "tier":"core", "domain":"element",
       "name":"查找元素",
@@ -220,20 +221,33 @@ Agent 接入后**第一个应该调用**的方法（WinUse-Bench 把"首轮是�
 }}
 ```
 
-### 3.2 `tier` 分层（采纳 A-3 裁定）
+### 3.2 `tier` 分层（采纳 A-3 裁定 · **清单唯一权威源 = 07 §0.7**）
 
-**问题**：v1 有 108 个能力。把它们全部塞进 LLM 的 tools 数组会**显著降低工具选择准确率**并撑爆上下文【实】（function-calling 领域反复验证的现象）。
+> ⭐ **本节不自带清单**（team-lead 裁定 Q4）。
+> `tier` 的**唯一权威源是 `docs/07-capability-registry.md` §0.7 的 `tier` 列**（口径与圈定规则见 **07 §0.7.13**）。
+> 本节只定义**协议行为**（怎么暴露、怎么过滤），不定义**哪条属于哪一档**。
 
-| tier | 数量 | 可见性 | 选取原则 |
+**问题**：v1 有 **100** 个能力（07 §0.7.12 实测行数；旧稿写 108 已更正）。把它们全部塞进 LLM 的 tools 数组会**显著降低工具选择准确率**并撑爆上下文【实】（function-calling 领域反复验证的现象）。
+
+| tier | 条数 | 可见性 | 选取原则 |
 |---|---|---|---|
-| `core` | ~34 | **默认可见** | 高频 + 通用 + 跨应用。Agent 完成 80% 任务只需要这些 |
-| `extended` | ~48 | 需在 `session.hello` 声明 `tiers:["extended"]`，或按 `domain` 按需拉取 | 中频/域专用（browser、office、shell、registry 等） |
-| `advanced` | ~26 | 需显式声明且部分需授权 | 高危/脆弱/需 PoC（`tray.*`、`toast.*`、`console.*`、虚拟桌面切换等） |
+| `core` | **46** | **默认可见** | 高频 + 通用 + 跨应用。Agent 完成 80–90% 任务只需要这些 |
+| `extended` | **48** | 需在 `session.hello` 声明 `tiers:["extended"]`，或按 `filter:{tier,domain}` 按需拉取 | 中频/域专用（browser、office、shell、registry 等），或可由 core 能力替代的冗余项 |
+| `advanced` | **6** | 需显式声明且部分需授权 | 高危/破坏性/高危域（`shell.exec`、`registry.get`、`file.delete`、`process.terminate`、`mouse.drag`、`system.power`） |
+| `future` | **68** | **不返回** | v1.5（38）+ v2（30）全部标 `future`，v1 不分发 |
 
-**core 子集原则**（实现时按此圈定，最终清单落在 07 §0.7 的 `tier` 列）：
-`session.hello/capabilities/preflight/status`、`system.info`、`display.list/dpi`、`process.list/start/terminate/wait`、`window.list/find/focus/state.get/minimize/maximize/restore/close/wait/tree/capture`、`element.find/count/get/tree/property.get/wait/invoke/set_value/toggle/select/scroll/focus/text.get/rect/center/highlight/exists`、`mouse.position.get/move/click/drag/scroll`、`keyboard.type/press/hotkey/ime.status`、`clipboard.get/set`、`screen.capture/annotate`、`file.list/stat/exists/read/write/copy/move/delete/mkdir`、`dialog.detect/wait/dismiss/button.click`、`filedialog.set_path/confirm/cancel`、`shell.exec`、`macro.list/describe/run`、`transaction.begin/commit/rollback`、`audit.query`、`wait.for/idle/stable`、`office.attach/excel.range/word.text`
+**协议行为（硬性）**
 
-> **渐进式发现不是优化项，是必需项**（07 §0.7.12 已提示）。协议必须支持 `domain` 过滤 + 分页，否则 108 个 tools 无法消费。
+1. `session.capabilities` 不带 `filter.tier` 时**只返回 `core`**；`total` 字段仍报本版本可用总数（100），`returned` 报本次返回条数。
+2. `filter.tier` 与 `filter.domain` 可组合使用；**`future` 档在任何情况下都不返回**（v1 二进制里没有实现，返回它等于欺骗）。
+3. 调用未声明档位的能力 → `CAPABILITY_NOT_GRANTED`（见 §9.2），并在 `error.data` 里给出**应声明的 `tier` 名**，而不是让 Agent 猜。
+4. tier 划分**只影响可见性与授权，不影响能力语义**：同一能力在 core 与 extended 下行为完全一致。
+5. 实现端**禁止在代码里硬编码 ID 清单**：`tier` 由 07 §0.7 的 `tier` 列生成（构建期代码生成或资源表），改档位只改 07，不改多处。
+
+> **渐进式发现不是优化项，是必需项**（07 §0.7.13 已提示）。协议必须支持 `domain` 过滤 + 分页，否则 100 个 tools 无法消费。
+>
+> 🔴 **口径更正记录**：本节原写 `core ~34 / extended ~48 / advanced ~26 / total 108`，并内联了一份 85 条 ID 清单（含 `shell.exec`、`office.*`、`transaction.*`，与硬规则 R1–R4 直接冲突）。**清单已删除、数字已按 07 §0.7 实测值更正**。
+> ⚠️ **core 39 → 43 → 44 → 45 → 46**：① 经 **C0 往返复检**，`display.list`、`file.copy`、`file.move`、`file.mkdir` 四条在 core 下**没有 ≤1 次调用的等价路径**，已放回；② 经 **A-17 裁定**，`ocr.recognize` 由 v1.5 提前到 v1 并入 core（自绘 UI 的唯一读取通道）；③ PM 按命名权威补进 02 §5.1 的 `session.resume` 同步入 07 并入 core（挂起-恢复协议的另一半，必须默认可见）；④ **`process.list` 经 C0 复检的 C 类登记后被 team-lead 按 C7②判定闭环裁定放回 core** —— 理由不是"它常用"，而是 **Bench T25** 的判据字面依赖它（10 §3 T25 🟢 判定列 = `process.list` 含 `CalculatorApp.exe`），且 T25 在 G1② 冻结清单内（10 §6.5.1）。⚠️ **T17 不是依据**（其判定走审计日志）。逐条依据见 **07 §0.7.13 C0 复检表**与 **§0.7.14**。
 
 ### 3.3 描述文案的验收要求（PRD P0-3）
 
@@ -368,10 +382,12 @@ Agent 接入后**第一个应该调用**的方法（WinUse-Bench 把"首轮是�
 |---|---|
 | **R1** | 进程必须在**创建任何窗口之前**声明 Per-Monitor DPI Awareness v2（`SetProcessDpiAwarenessContext(-4)` + manifest `PerMonitorV2` 双保险） |
 | **R2** | **对外唯一权威坐标空间 = `vsc_physical`（物理像素 + 虚拟屏幕坐标系 VSC）**，原点为主屏左上角，副屏坐标**可为负** |
-| **R3** | 禁止 `GetSystemMetrics(SM_CXSCREEN)`（只返回主屏）与 `GetDpiForSystem`（混合 DPI 无意义）；一律 `GetDpiForWindow` / `GetDpiForMonitor` / `EnumDisplayMonitors` |
-| **R4** | 视觉矩形用 `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)`，**不用 `GetWindowRect`**（后者含 DWM 阴影/不可见缩放边框）。**实测偏移【实】：125% 缩放下最大化窗口每边 9px、非最大化窗口左/右/下各 8px、上 0px**（见 §5.4.1） |
-| **R6** | ⭐ **必须区分两套坐标系**：`hit`（＝`GetWindowRect`＝UIA `BoundingRectangle`，用于点击/定位，**对外默认值**）与 `visual`（＝DWM extended bounds，用于截图）。二者**不同源**，相差 8–9px（§5.4.1） |
+| **R3** | 禁止 `GetSystemMetrics(SM_CXSCREEN)`（只返回主屏）与 `GetDpiForSystem`（混合 DPI 无意义）；一律 `GetDpiForWindow` / `GetDpiForMonitor` / `EnumDisplayMonitors`。🔴 **C10 实测后升级为硬禁止**：`GetDpiForSystem` 在**异构 DPI 下恰好等于主屏 DPI**（实测：声明 PMv2 后 = **120**，而主屏 120 / 副屏 **96**）—— 它是一个"看起来对、副屏全错"的值，**禁止用于任何副屏换算**。副屏换算必须走 `MonitorFromPoint` / `MonitorFromWindow` + `GetDpiForMonitor(MDT_EFFECTIVE_DPI)`。见 §5.4.3 |
+| **R4** | 视觉矩形用 `DwmGetWindowAttribute(DWMWA_EXTENDED_FRAME_BOUNDS)`，**不用 `GetWindowRect`**（后者含 DWM 阴影/不可见缩放边框）。🔴 **C12 修正原表述**：偏移量**不是常量**，是「**是否最大化 × 该屏 DPI**」的函数 —— 实测 最大化@100% = 每边 **8px**、最大化@125% = 每边 **9px**、非最大化 = 左/右/下各 **8px** 且**上边 0px**（见 §5.4.1 第二轮表） |
+| **R6** | ⭐ **必须区分两套坐标系**：`hit`（＝`GetWindowRect`＝UIA `BoundingRectangle`，用于点击/定位，**对外默认值**）与 `visual`（＝DWM extended bounds，用于截图）。二者**不同源**，差值**不是 8–9px 常量**（§5.4.1） |
 | **R5** | 所有响应带 `coordinate_space` 自描述；允许输入 `monitor_normalized` / `window_relative`，但响应仍回 `vsc_physical` |
+| **R7**（C13 新增） | 🔴 **两条链路的基准必须分开取，不许互推**：`DWMWA_EXTENDED_FRAME_BOUNDS` 是**唯一不受本进程 DPI 感知等级影响的基准**（实测 PMv2 切换前后 `changed_dwm_count = 0` 而 `changed_win32_count = 6`）。→ **截图 / 视觉校验 / SoM 标注框一律以 DWM 为准；Win32 / UIA 只用于点击命中。** 禁止"用 Win32 rect 推算截图像素位置"或反向推算 —— 感知等级一变，Win32 侧整体漂移而 DWM 侧不动，互推出来的偏差是**系统性**的，不是噪声 |
+| **R8**（C10 新增） | 🔴 **禁止对外暴露"全局 DPI"标量**。DPI 信息一律**逐显示器数组**（`display.list` 的 `monitors[].dpiX/dpiY/scalePercent`，见 07 §19.1）；`display.dpi` 单点查询**必须**带 `monitorId` 或 `hwnd` 定位到具体显示器，不得返回"系统 DPI"。**理由**：异构 DPI 下根本不存在"系统 DPI"这个正确值 |
 
 ### 5.2 为什么选 VSC 物理像素（推导，回应 PM 的质疑）
 
@@ -396,7 +412,8 @@ VSC 原点：             (SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN)   // 可为负
 | 误差源 | 量级 | 缓解 |
 |---|---|---|
 | 未声明 PerMonitorV2 | **整体偏移，可达数十 px** | R1 强制 |
-| 用 `GetWindowRect` 而非 DWM extended bounds | 7–10px【推】 | R4 |
+| 用 `GetWindowRect` 而非 DWM extended bounds | 8–9px【实】（**且非常量**，随最大化状态与该屏 DPI 变，见 §5.4.1 第二轮） | R4 |
+| 用 `GetDpiForSystem` 做跨屏换算 | 🔴 **副屏系统性错误**（实测副屏真实 96，该 API 返回 120）**且静默** | R3（C10） |
 | `MOUSEEVENTF_ABSOLUTE` 归一化 | 不确定（多屏语义争议） | 不用；用 `SetCursorPos` 直吃 VSC，down/up **不带** ABSOLUTE 标志 |
 | 鼠标指针加速（相对移动） | 累积漂移 | 只用绝对定位 |
 | 目标窗口在移动中 | 不定 | `wait.stable` 先稳定 |
@@ -408,10 +425,11 @@ VSC 原点：             (SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN)   // 可为负
 | 数值 | 跨屏点击误差 **≤2px 满分 / ≤5px 记为 `degraded pass` / >5px 失败** |
 | **前置条件（新增，硬性）** | ① 服务端已声明 PMv2 且 `dpi_awareness_ok=true`（否则一律 `DPI_MISMATCH`）；② 坐标显式使用 `hit` 空间；③ 涉及截图/标注时**已完成 DWM↔UIA 换算**（§5.4.1）。**不满足前置条件时该 AC 不适用** |
 
-> ⚠️ **诚实标注**：`≤2px` 仍是**目标值【推】，无多显示器实测依据**（PM 在 WinUse-Bench 中主动标出，已登记进假设登记表）。
-> **校准责任**：`PoC-P0-COORD` 必须实测 —— ① 副屏在左（负坐标）场景下 `SetCursorPos` 是否可达；② Medium IL 进程对 High IL 窗口 `SetCursorPos` 是否被 UIPI 拒绝；③ 混合 DPI（100%+200%）跨屏误差；④ 8–9px 偏移随缩放比的变化规律。若 ② 被拒 → 回退 `SendInput`+ABSOLUTE 并**强制走 UIA 通道**。
+> ⚠️ **诚实标注**：`≤2px` 在主屏已有间接依据，但**在副屏上仍是目标值【推】，未实测**（12 §8.3 诚实清单：`SetCursorPos` 到负坐标是否可达属侵入式仍未做；副屏实际点击命中误差也未测）。
+> **校准责任**：`PoC-P0-COORD` 仍须实测 —— ① 副屏在左（负坐标）场景下 `SetCursorPos` 是否可达；② Medium IL 进程对 High IL 窗口 `SetCursorPos` 是否被 UIPI 拒绝；③ 混合 DPI 跨屏**点击命中**误差；④ ~~8–9px 偏移随缩放比的变化规律~~。
+> **④ 已由第二轮部分结案（C12）**：偏移量随「是否最大化 × 该屏 DPI」变化**已有实测**（最大化 @100% → 8px、@125% → 9px；非最大化 → 左/右/下 8px、上 0px）。**仍未测**：150% / 200% 档位，以及**副屏实际点击命中误差**。若 ② 被拒 → 回退 `SendInput`+ABSOLUTE 并**强制走 UIA 通道**。
 
-### 5.4.1 ⭐ 实测校准：两套坐标系的 8–9px 差（PoC 第一轮 · 结论 C3）
+### 5.4.1 ⭐ 实测校准：两套坐标系的差（PoC 第一轮 C3 ／ 第二轮 C12 修正）
 
 > 来源：`poc/poc-results.json` ／ `poc/poc-run.log`
 > 环境：**Windows 11 Build 26200（25H2）｜单显示器 1920×1080 @125%（120 DPI）｜探测进程 IL=Medium、未提权｜C#/.NET 10/FlaUI 5.0.0｜非侵入式只读**
@@ -433,17 +451,84 @@ VSC 原点：             (SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN)   // 可为负
 | **C3-R2** | `window.*` 返回**必须同时给** `rect`（hit）与 `visual_rect`（visual）；只给一个视为违约 |
 | **C3-R3** | `element.*` 的 `rect`/`center` 一律 `hit` 空间（UIA 原生即 hit，无需换算） |
 | **C3-R4** | `screen.capture` 返回 `capture_space`（默认 `visual`）+ `region` + `scale` |
-| **C3-R5** | ⭐ **SoM 标注必须做空间换算**：标注框来自 UIA（hit）而图像来自 WGC/PrintWindow（visual），**不换算则编号框整体偏移 8–9px**，模型按编号点击必然点偏 |
-| **C3-R6** | 偏移量**禁止硬编码**（8 或 9）：必须同时取两套值再相减，因为偏移随窗口状态（最大化与否）与 DPI 缩放变化 |
+| **C3-R5** | ⭐ **SoM 标注必须做空间换算**：标注框来自 UIA（hit）而图像来自 WGC/PrintWindow（visual），**不换算则编号框整体偏移**（偏移量非常量，见 C3-R6），模型按编号点击必然点偏 |
+| **C3-R6** | 偏移量**禁止硬编码**（8 或 9）：必须同时取两套值再相减。🔴 **第二轮实测（C12）把"为什么"从推测换成实证**：偏移 = f(是否最大化, 该屏 DPI) —— 最大化 @100% = 8px、@125% = 9px、非最大化 = 左/右/下 8px 且上 0px。**硬编码即错** |
+| **C3-R7**（C13 新增） | 🔴 **DWM 是唯一稳定基准，两条链路不许互推**：PMv2 切换前后 `changed_dwm_count = 0` 而 `changed_win32_count = 6` → `DWMWA_EXTENDED_FRAME_BOUNDS` **不随本进程感知等级漂移**，Win32/UIA 会。**截图 / 视觉校验 / SoM 对齐一律取 DWM；点击命中取 Win32/UIA。禁止用一侧推算另一侧。** |
+| **C3-R8**（C10 新增） | 🔴 **换算时禁止用 `GetDpiForSystem`**：异构 DPI 下它等于**主屏** DPI（实测 120），副屏真实值是 96 → **副屏系统性偏错且静默**。必须 `MonitorFromPoint` / `MonitorFromWindow` + `GetDpiForMonitor(MDT_EFFECTIVE_DPI)`（见 §5.4.3） |
 
-> 【推】该偏移源自 DWM 的不可见缩放边框，数值随 DPI 缩放比变化（120 DPI 下 8–9px ≈ 96 DPI 下 7px × 1.25）。**该比例关系未实测**，须在 100%/150%/200% 下补测（列入 `PoC-P0-COORD`）。
-> ⚠️ 本轮为**单显示器、VSC 原点非负**（`origin_is_negative=False`），**多显示器 / 负坐标副屏 / 混合 DPI 三项仍未实测**。
+> 【实】该偏移源自 DWM 的不可见缩放边框。**第二轮已实测其变化规律的一部分（C12）**：偏移量 = f(是否最大化, 该屏 DPI)，见下方第二轮表。~~该比例关系未实测~~ → **150% / 200% 档位仍未测**（列入 `PoC-P0-COORD`）。
+> ✅ **第二轮已补齐**：多显示器 / 负坐标副屏 / 异构 DPI 三项**只读侧全部实测**（12 §8）。**仍未测的只剩侵入式部分**：`SetCursorPos` 到负坐标可达性、副屏实际点击命中误差、跨屏拖拽、`MonitorFromPoint` 在屏间隙的返回。
+
+#### 第二轮实测（双屏异构 DPI · 结论 C12 —— **修正 C3**）
+
+> 环境：**Windows 11 26200/25H2｜双屏 DISPLAY1 主屏 1920×1080 @125%（120 DPI，`[0,0,1920,1080]`）+ DISPLAY2 副屏 1920×1200 @100%（96 DPI，`[0,-1200,1920,0]`）｜VSC = `[0,-1200,1920,2280]`，`origin_is_negative=true`｜只读**
+> 来源：`docs/12-poc-findings.md` §8
+
+| 窗口 | 所在屏 / DPI | 状态 | Win32 / UIA | DWM | 差值（DWM − Win32） |
+|---|---|---|---|---|---|
+| WorkBuddy | 主屏 125% | 最大化 | `[-9,-9,1929,1029]` | `[0,0,1920,1020]` | **9, 9, −9, −9** |
+| GitHub（Chrome） | **副屏 100%** | 最大化 | `[-8,-1208,1928,-40]` | `[0,-1200,1920,-48]` | **8, 8, −8, −8** |
+| Clash Verge | 主屏 125% | 非最大化 | `[610,95,1803,1014]` | `[618,95,1795,1006]` | **8, 0, −8, −8** |
+
+**两件事同时成立，缺一不可**：
+
+1. ✅ **好消息（C3 坐实）**：全部 6 个样本上 **UIA `BoundingRectangle` 与 `GetWindowRect` 的 delta 恒为 `[0,0,0,0]`** —— **含副屏、含负坐标**。C3 的"UIA == Win32 == 物理像素 VSC"在双屏异构 DPI 下**再次成立**，这条从"单屏实测"升级为"双屏实测"。
+2. 🔴 **坏消息（C3 修正）**：**偏移量不是常量**。原表述"125% 下固定差 8~9px"是**单屏数据的巧合** —— 单屏只有 125% 一档，8 与 9 分别来自"非最大化"与"最大化"，被误读成同一个量的取值范围。双屏数据把两个自变量拆开了：
+
+| 自变量 | 取值 | 偏移 |
+|---|---|---|
+| 是否最大化 × 该屏 DPI | 最大化 @ **100%** | 每边 **8px** |
+| | 最大化 @ **125%** | 每边 **9px** |
+| | 非最大化（本轮仅 125% 样本） | 左/右/下 各 **8px**，**上 0px** |
+
+→ **协议落点**：偏移量**禁止硬编码 8 或 9**，必须「同时取 `GetWindowRect` 与 DWM 两套值再相减」（C3-R6 已是此规则，第二轮只是把**为什么**从推测换成实测）。**这条直接决定 B-01 的 ≤2px 能否达成** —— 硬编码 8px 的话，125% 最大化窗口每边就错 1px，副屏上再叠加其他误差，2px 阈值会被吃掉一半。
 
 ### 5.4.2 ⭐ PMv2 是正确性前提，不是优化（PoC 第一轮 · 结论 C2）
 
 【实】进程默认 `PROCESS_DPI_UNAWARE` 时：`GetDpiForSystem` **谎报 96**（真实 **120**），**12/12** 个窗口的 `GetWindowRect` 全部是被系统虚拟化后的**错误值**；调用 `SetProcessDpiAwarenessContext(PER_MONITOR_AWARE_V2)` 后（本机成功，`lastError=0`）返回 **120**，坐标才正确。
 
 **协议落点**：`session.hello`/`system.info` 必返回 `dpi_awareness` + `dpi_awareness_ok`；`false` 时 `session.preflight` 返回 `DPI_MISMATCH`，且**所有坐标类能力拒绝执行**（而不是返回错坐标）。
+
+### 5.4.3 ⭐🔴 `GetDpiForSystem` 在异构 DPI 下只能代表主屏（第二轮 · 结论 C10）
+
+> 来源：`docs/12-poc-findings.md` §8.2｜双屏异构 DPI（主屏 120 / 副屏 96）
+
+| 进程状态 | `GetDpiForSystem` 返回 | 真实值（主屏 / 副屏） | 副屏换算结果 |
+|---|---|---|---|
+| DPI-unaware | **96** | 120 / 96 | 主屏错 |
+| 声明 PMv2 后 | **120** | 120 / **96** | 🔴 **副屏错，且静默** |
+
+**这是比 C2 更隐蔽的一类错**：C2 的问题是"unaware 时 `GetDpiForSystem` 谎报 96" —— 那个错**在单屏下就能测出来**（真实 120 vs 谎报 96）。而 C10 的问题是：**声明 PMv2 之后这个 API 也不对** —— 它返回的 120 **恰好是主屏的正确值**，所以"看起来完全正常"，只有副屏的换算全错，且**没有任何报错**。
+
+> **判断方法**：`GetDpiForSystem` 在异构 DPI 下**必然**等于某一块屏的 DPI（通常是主屏），因此**在它恰好等于被测屏时，你测不出它是错的**。这决定了它不能被当作可验证的换算依据 —— 一个"错误时静默、正确时无法与真值区分"的 API，不该进正确性链路。
+
+**协议落点（硬规则）**：
+- 副屏 / 跨屏换算**必须** `MonitorFromPoint` / `MonitorFromWindow` + `GetDpiForMonitor(MDT_EFFECTIVE_DPI)`。
+- **禁止** `GetDpiForSystem` 出现在任何坐标换算路径上（R3 / C3-R8）。
+- **对外**不暴露"系统 DPI"标量（R8）；`display.list` 的逐显示器数组是唯一权威。
+
+### 5.4.4 ⭐🔴 单屏测不出 DPI 感知 bug（第二轮 · 结论 C11 —— **测试策略级结论**）
+
+PMv2 切换前后逐窗口对比（`diff_A_vs_B`）：
+
+| 窗口 | 所在屏 / DPI | PMv2 前 | PMv2 后 | 是否变化 |
+|---|---|---|---|---|
+| WorkBuddy | 主屏 125% | `[-7,-7,1543,823]` | `[-9,-9,1929,1029]` | **变** |
+| Clash Verge | 主屏 125% | `[488,76,1442,811]` | `[610,95,1803,1014]` | **变** |
+| GitHub（Chrome） | **副屏 100%** | `[-8,-1208,1928,-40]` | `[-8,-1208,1928,-40]` | **没变** |
+| 豆包（Chrome） | **副屏 100%** | `[-8,-1208,1928,-40]` | `[-8,-1208,1928,-40]` | **没变** |
+
+`changed_win32_count = 6`，**全是主屏窗口**；副屏窗口**一次都没变**。
+
+**机理**：进程 DPI-unaware 时，Windows 用 `GetDpiForSystem`（= **96**）做坐标虚拟化。对 **100% 的副屏这个值恰好正确**，对 **125% 的主屏是错的**。
+→ **副屏坐标"看起来是对的"纯属巧合。**
+
+**这条为什么重要**（它不只是坐标换算的细节）：
+- **单屏 100% 环境下永远测不出 DPI 感知 bug** —— unaware 与 PMv2 在该环境下给出**完全相同**的结果。
+- 第一轮 C2 只在**单屏 125%** 下测，因此**没暴露这一层**：那一轮看到的"全线错误"恰恰是因为屏幕不在 100%。
+- → **MSAA / Win32 路径的 DPI 回归测试必须跑异构 DPI 双屏，跑单屏等于没跑。**（已写入 09 测试策略，见 09 §3 T-C2 验收与 §6 风险登记）
+
+**协议落点**：`session.preflight` 的 `dpi_awareness_ok` 检查**不得**用"当前窗口坐标看起来合理"来判定 —— 那在 100% 屏上是恒真的。必须**直接读进程的 awareness 上下文**（`GetAwarenessFromDpiAwarenessContext(GetThreadDpiAwarenessContext())`）并与 `perMonitorV2` 比对。
 
 ### 5.5 点击实现流程
 
@@ -660,12 +745,42 @@ JSON-RPC `error.code` 为整数。规则：
 | `INVALID_COORDS` | 坐标超出虚拟桌面范围 | 坐标类 | `retry` | 用 `display.list` 重新获取拓扑并换算 |
 | `STALE_HANDLE` | 句柄失效（同 `ELEMENT_STALE`，保留别名） | — | `retry` | 见 `ELEMENT_STALE` |
 | `NOT_SUPPORTED` | 能力被禁用 / 平台不支持 | — | `degrade` | 查显式不支持清单，换等效路径 |
+| `CAPABILITY_NOT_GRANTED` | **调用了未声明档位的能力**（该能力属 `extended`/`advanced`/`future`，本次会话未 `want_tiers` 声明） | 任意能力调用 | `escalate` | `error.data.required_tier` 给出应声明的档位名；用 `session.hello{want_tiers:[...]}` 重新声明后重试。**不要**反复重试同一请求 |
 | `VERSION_MISMATCH` | API 版本不匹配 | `session.hello` | `abort` | 见 §14 |
 | `RATE_LIMITED` | 请求过频 | — | `retry` | 按 `retry_after_ms` 退避 |
 
 > **`VERIFY_FAILED` vs `VERIFY_MISMATCH` 的边界（回应 PM 的 A3-③）**：
 > - `VERIFY_FAILED`：**验证动作本身无法完成**（读不回来、通道不可用）。语义是"我不知道成没成"。
 > - `VERIFY_MISMATCH`：**验证完成了，但结果不符**。语义是"成了，但结果不对"，且必须附 `expected`/`actual`。
+
+> ⭐ **`reason` 枚举的两层拆分（team-lead 裁定，PM 已同步改 T17 判定）**
+> 同一件事（UAC 提权）在**两个层级**出现，用**两个码**，不要混：
+>
+> | 层级 | 码 | 出现位置 | 语义 |
+> |---|---|---|---|
+> | **前置校验层** | **`UAC_OPEN`** | `session.preflight` 的检查项结果 | "环境里正开着 UAC 安全桌面"（02 §5.1 授权命名） |
+> | **动作执行层** | `SECURE_DESKTOP` | 动作调用返回的 `error.type` | "这个动作撞上了安全桌面，无法执行" |
+> | **任务级挂起** | `NEEDS_HUMAN` | `error.type`，其 `error.data.reason` **取值必须是 `UAC_OPEN`** | "我完成不了，需要人来" |
+>
+> **硬性要求**：`NEEDS_HUMAN.error.data.reason` 的枚举为 `UAC_OPEN`｜`CAPTCHA`｜`2FA`｜`LOGIN_REQUIRED`｜`MANUAL_CONFIRM`，**禁止自由文本**。
+> Bench T17 的判定口径（PM 侧）：**`UAC_OPEN` 与 `SECURE_DESKTOP` 任一出现即视为正确上报**。
+> `resume_token` 到期 → `TIMEOUT`，**不是 `APPROVAL_DENIED`**（前者"没人来处理"，后者"被明确拒绝"，混了会把 T17 判反）。
+
+> ⚠️ **`VERIFY_FAILED` 有覆盖边界，会直接影响 SFR-server（待 team-lead 裁定）**
+> `VERIFY_FAILED` **在码表里**（本表第 24 行），但**不是所有能力都会产生它**。v1 里 `verify` 参数**默认为 true** 的只有 7 族：`element.invoke`、`element.set_value`、`keyboard.type`、`filedialog.set_path`、`dialog.dismiss`、`dialog.button.click`、`macro.run`。
+> **`mouse.click`、`file.write`、`file.copy`、`file.move`、`file.mkdir` 没有内置校验** —— 它们失败时**根本不会产生 `VERIFY_FAILED`**。
+>
+> **🔴 方向性更正（PM 指出，我原措辞错误，已改）**：我原本写"会让 SFR-server **虚假归零 / 自动达标**"——**方向反了**。按 10 §6.2 的**题级**定义 `|{verifier=false ∧ 审计中无 VERIFY_FAILED}| / |{verifier=false}|`，不可校验的动作静默失败时该题**会被计入分子**，SFR-server 是被**推高**的，即当前口径**偏悲观、不偏乐观**。
+> **正确的风险表述**：① 现在**不存在"我们占便宜"**，不必急着改口径；② 但首次跑分 SFR-server **必然 > 0**，且其中一部分**纯粹来自覆盖洞而非实现缺陷** —— 到那一刻，"把不可校验的剔出分母"的诱惑会非常真实且看起来合理。**所以分层口径必须在首次跑分前定死，跑完再分层即属事后调口径（10 §6.6 判无效）。**
+>
+> **建议（PM 已附议并加严）**
+> 1. **`file.write/copy/move/mkdir` 加 `verify?: bool = true`，语义 = 回读比对**（回读长度 **且** 内容 hash 与待写内容一致）。
+>    ⚠️ **不能用 `file.stat` 代替回读**（PM 加严）：stat 只给存在性 + size，**抓不到"写成功了但内容不对"** —— 内容截断（磁盘满/流未 flush）、编码写反（GBK/UTF-8）都可能让 size 看起来正常。**"size 对"不等于"内容对"**，而这恰恰是最典型的静默失败。
+>    **边界**：`verify` 只覆盖**物理写入一致**，**不覆盖语义正确** —— "写进去的是不是用户想要的"归独立 verifier 判，否则两个通道同源（违反 10 §1.3 纪律 1）。
+> 2. **`mouse.click` 加可选 `expect?: Condition`**（复用 `wait.for` 的 condition 判别联合）：传了才校验，不传则不产生 `VERIFY_FAILED`（点击无 expectation 时服务端无法定义"成功"，硬造码即假阳性）。
+>    **追加（PM）**：不传 `expect` 时**必须在审计中标记 `unverified: true`** —— 否则事后无法统计"多少点击是可校验的"，第 3 条的分母分层就没有数据支撑。
+> 3. **SFR-server 分两个分母报**（有内置校验/传了 `expect` 的严格判 0；其余单列，不计入 G1① 的 0 目标），**并同时报 `VCR`（verify coverage rate = 可校验动作占比）** —— 没有 VCR，看到"SFR = 0"也判断不出这个 0 覆盖了多少动作。
+>    **连带（PM 报 team-lead）**：G1①「零静默失败」的承诺范围随之收窄为"**在可校验的动作上 SFR-server = 0**"，须同步写进 `03` §2.1 G1①，不能只改 Bench。
 > 二者 recovery 不同：前者应换验证通道重试，后者应回滚或上报。
 
 ### 9.2.1 ⭐ `UIPI_BLOCKED` 的完整定义（PoC 第一轮 · 结论 C1 + C7）
@@ -968,7 +1083,7 @@ OSWorld 论文把"歧义时猜测而非询问""宣称完成前跳过验证"列�
 
 | 动作 | 预估 token | 说明 |
 |---|---|---|
-| `session.capabilities`（core 34 条，含 schema） | ~2400 | 一次性；可用 `include_schema:false` 降到 ~900 |
+| `session.capabilities`（**core 46 条**，含 schema） | **~3150** | 一次性；可用 `include_schema:false` 降到 ~1200。数字随 07 §0.7 `tier` 列条数浮动 |
 | `element.tree`（典型对话框，深度 6） | ~600 | 已裁剪 |
 | `element.tree`（资源管理器，深度 6，截断） | ~800 | 触发截断，标注 `truncated` |
 | `screen.annotate`（SoM 30 个框） | ~500 | 不含图像 |
@@ -1040,6 +1155,9 @@ OSWorld 论文把"歧义时猜测而非询问""宣称完成前跳过验证"列�
 | 3 | **数据层永远优先于 GUI**（02 P10 特例）：读 Excel 单元格优先 `office.excel.range` 而非 `element.*`；写同理。理由：COM 通道更快、更准、且不受 DPI/主题/UIA 覆盖影响 | 见 08 §4 用例 ② |
 | 4 | 通用 COM 逃逸口 `app.com.call(prog_id, method, args)` **不做**（v2 亦不优先） | 等于把整个 COM 攻击面暴露给 LLM，审计与风险分级都做不了。改用具体的 `office.*` |
 | 5 | `element.caret.get` / `element.caret.set`（字符级光标）、`element.set_range_value`（滑块）**保留** | v1.5 归属，但协议必须先定义（OSWorld-G 把这两项列为精细操作评测项） |
+| 6 | **A-3 数字修订**：`tier` 条数原写 `core 34 / extended 48 / advanced 26 / total 108`，**改为 core 46 / extended 48 / advanced 6 / future 68 / total 100**（39 → 43 系 C0 往返复检后放回 4 条；43 → 44 系 A-17 把 `ocr.recognize` 提前到 v1，见 07 §0.7.13 / §0.7.14）| 依 team-lead 裁定 Q1–Q4：条数**服从清单**不预定数字；清单唯一权威源是 **07 §0.7 的 `tier` 列**（口径见 07 §0.7.13）。同时更正 07 §0.7.12 旧统计 108/33/21=162 → 实测行数 100/38/30=168（v1 100 = core 46 + extended 48 + advanced 6）。**45 → 46** 系 `process.list` 按 **C7②判定闭环**放回 core（Bench T17 / T25 的可观测量）；C7 的使用受 07 §0.7.13 约束：**只能用于协议/判定闭环，且必须写明缺了它哪条协议跑不通** |
+| 7 | **06 不再自带 tier 清单**：原 §3.2 内联的 85 条 ID 清单已删除 | 同一份清单出现两处必然漂移；改为单点引用 07 §0.7。实现侧用构建期代码生成，禁止硬编码 ID 清单 |
+| 8 | **第二轮 PoC（双屏异构 DPI）回写**：新增 **R3 硬禁止 `GetDpiForSystem`**（C10）、**R7 两条链路基准不许互推**（C13）、**R8 禁止对外暴露全局 DPI 标量**；**R4 / R6 / C3-R5 / C3-R6 的"8–9px 偏移"改为非常量表述**（C12：= f(最大化, 该屏 DPI)）；新增 **§5.4.3**（`GetDpiForSystem` 只等于主屏 DPI）与 **§5.4.4**（单屏测不出 DPI 感知 bug） | 来源 `12-poc-findings.md` §8。C3 的"UIA == Win32"由单屏实测**升级为双屏实测**（含副屏、含负坐标）；**偏移量非常量**直接决定 B-01 的 ≤2px 能否达成。同步回写 04 §6.3 / 05 ADR-006（R6–R8）/ 09 §3.0 测试策略 |
 
 ---
 
@@ -1053,7 +1171,7 @@ OSWorld 论文把"歧义时猜测而非询问""宣称完成前跳过验证"列�
 | `PoC-UIA-HANG` | §7 等待超时语义 | **P0** |
 | `PoC-P1-IME` | §6 中文输入策略链 | **P0** |
 | `PoC-P1-CAPTURE` | §9.2 `CAPTURE_PROTECTED` 触发条件 | P1 |
-| `PoC-P1-OCR` | §15 OCR 置信度标注 | P1 |
+| **`PoC-P0-OCR`**（由 P1 升级） | §15 OCR 置信度标注；**以及 `ocr.recognize` 是否够格进 v1**（A-17） | **P0** |
 | `PoC-P2-ELECTRON` | §4 Selector 对 Electron 的可用性 | P1 |
 | `PoC-P2-CONSOLE` | §17 ConPTY 读取 | P2 |
 

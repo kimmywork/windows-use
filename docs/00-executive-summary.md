@@ -1,6 +1,6 @@
 # WinUse 执行摘要
 
-> **一句话**：做一个**常驻的 Windows 桌面能力服务端** —— 单个二进制 + 本地 HTTP/CLI/MCP 三通道，把 Windows 桌面的"看"和"动"封装成 162 个自描述能力，让任何 AI 都能接入并接管这台机器。
+> **一句话**：做一个**常驻的 Windows 桌面能力服务端** —— 单个二进制 + 本地 HTTP/CLI/MCP 三通道，把 Windows 桌面的"看"和"动"封装成**一套自描述能力**（条数见 07 §0.7 实测表行，不在此写死），让任何 AI 都能接入并接管这台机器。
 > **只做 Windows。不是 Agent，不做大脑；只做能力层。**
 
 ---
@@ -72,11 +72,11 @@
 
 ## 4. 能力范围
 
-**162 条能力，分 15 个域**：`session` / `system`+`display` / `process`+`window` / `element` / `mouse`+`keyboard`+`text` / `clipboard`+`screen`+`ocr` / `file` / `dialog`+`filedialog` / `browser`+`shell`+`console` / `registry`+`notify` / `macro`+`transaction`+`undo`+`audit` / `wait` / `office` / `plugin`
+**能力集分 15 个域**（条数见 07 §0.7，不写死）：`session` / `system`+`display` / `process`+`window` / `element` / `mouse`+`keyboard`+`text` / `clipboard`+`screen`+`ocr` / `file` / `dialog`+`filedialog` / `browser`+`shell`+`console` / `registry`+`notify` / `macro`+`transaction`+`undo`+`audit` / `wait` / `office` / `plugin`
 
 | 版本 | 条数 | 覆盖 |
 |---|---|---|
-| **v1（MVP）** | **108** | PRD 全部 P0 + 少量 P1 主干 |
+| **v1（MVP）** | **见 07 §0.7.12** | PRD 全部 P0 + 少量 P1 主干 |
 | v1.5 | 33 | 事务、事件订阅、CDP、终端、Snap、虚拟桌面查询、宏录制 |
 | v2 | 21 | 托盘 / Toast / 虚拟桌面切换 / 模板匹配 / 回收站 / console |
 
@@ -95,7 +95,7 @@
 | **1** | **`grounding` 强制返回**：`{layer, confidence, degraded, fallbackReason, attempts}` | Agent 能否可靠工作，取决于它**知不知道自己踩在哪一层**。忽略 grounding = 闭眼开车 |
 | **2** | **错误码自带可执行恢复指引**：`recovery: retry\|degrade\|escalate\|abort\|wait_resume` + `hint` + `suggested_next` | Agent 友好性取决于**错误是否可执行**。不是"失败了"，而是"下一步该干什么" |
 | **3** | **`NEEDS_HUMAN` = 挂起，不是失败**，带 `resume_token` 可恢复 | 直接对冲 OSWorld 列出的两条失败主因（歧义时猜测、跳过验证） |
-| **4** | **分层暴露**：`core` 34 / `extended` 48 / `advanced` 26 | 108 个 tools 全塞给 LLM 会**显著降低工具选择准确率**并撑爆上下文 |
+| **4** | **分层暴露**：`core` / `extended` / `advanced` 三档（条数见 07 §0.7.13 的 `tier` 列） | v1 全部 tools 全塞给 LLM 会**显著降低工具选择准确率**并撑爆上下文 |
 | **5** | **SoM 标注（`screen.annotate`）**：返回"编号 → 元素"映射，Agent 说"点 7 号"而不是"点 (842,311)" | 既是省 token，也是**从像素层爬回语义层的桥梁** |
 | **6** | **默认不返回图像**、diff 增量、`max_tokens` 预算 | 单次观察增量 ≤800 token |
 | **7** | **一键导出 OpenAI / Anthropic / MCP 三种 tools 格式**，且把 `风险/幂等/通道` 追加进 description | 零转换接入；**宁可多几十个 token，也不能让 Agent 在不知风险的情况下调用 `shell.exec`** |
@@ -111,7 +111,7 @@
 | **坐标系** | **物理像素 + 虚拟屏幕坐标（VSC）** + 强制 Per-Monitor DPI Awareness v2 | 混合 DPI 下存在三套坐标系，同一窗口可返回 500×500 / 1000×1000 / 1500×1500。VSC 与截图、`GetCursorPos`、UIA 全同源 |
 | **中文输入** | `ValuePattern.SetValue` → `KEYEVENTF_UNICODE` → 剪贴板粘贴，**每层都读回校验**；**禁止**模拟拼音按键序列 | `SendInput` 不经过 IME 组字；按键序列需知道 IME 状态与编码方案，无解 |
 | **视觉模型** | **v1 不内置任何视觉定位模型** | OmniParser 的 icon_detect 权重是 **AGPL**，内置触发传染性。v1 走 `Windows.Media.Ocr`；视觉定位为外置插件、**我们不分发的二进制** |
-| **传输** | **JSON-RPC 2.0 over HTTP（单端点）+ SSE + CLI 镜像** | 162 个能力 → 162 个 method，零映射；导出 LLM tools 是零转换；CLI 与 HTTP 走同一 Dispatcher，行为完全一致 |
+| **传输** | **JSON-RPC 2.0 over HTTP（单端点）+ SSE + CLI 镜像** | 能力 ID 与 method 一对一、零映射（条数见 07 §0.7）；导出 LLM tools 是零转换；CLI 与 HTTP 走同一 Dispatcher，行为完全一致 |
 | **MCP 定位** | **MCP 是入口，不是本体** | stdio 是单客户端模型。若做成"纯粹一个 MCP server"，会退化成又一个 Windows-MCP 竞品，**丢掉"常驻能力服务端"这个第一差异化** |
 | **支持矩阵** | Win11 22H2+ 为一等公民；Win10 22H2 "尽力兼容" | Win10/Win11 的 UIA 树存在真实差异（如"未保存更改"对话框：Win10 子对话框、Win11 窗口内嵌），用双形态选择器吸收 |
 | **Office** | v1 做 Excel/Word COM，**不做通用 COM 逃逸口** | 通用口等于把整个 COM 攻击面暴露给 LLM，审计与风险分级都做不了 |
@@ -180,15 +180,15 @@
 |---|---|---|---|
 | **00** | `00-executive-summary.md` | — | 本文 |
 | 01 | `01-market-research.md` | 467 | 竞品调研、赛道分层、归因分析、**"竞品做得比我们好在哪里"** |
-| 02 | `02-windows-operation-patterns.md` | 807 | **16 场景域 → 5 层抽象 → 17 交互模式 → 133 条能力需求** |
+| 02 | `02-windows-operation-patterns.md` | — | **16 场景域 → 5 层抽象 → 17 交互模式 → 能力需求**（02 自报 ~133 为按表行统计、未展开的旧口径；**权威条数见 07 §0.7**） |
 | 03 | `03-prd.md` | ~400 | 产品目标/非目标、用户故事、需求池 P0/P1/P2、硬约束 C1–C12 |
-| 04 | `04-tech-foundation.md` | 859 | UIA/Win32/截图/OCR/CDP/IME/权限/DPI 技术底座 + **75 条能力可行性矩阵** |
-| 05 | `05-architecture.md` | 1550 | 12 个 ADR、模块与文件清单、请求生命周期、可靠性、分发与 AV/EDR |
+| 04 | `04-tech-foundation.md` | — | UIA/Win32/截图/OCR/CDP/IME/权限/DPI 技术底座 + **75 条能力可行性矩阵** |
+| 05 | `05-architecture.md` | — | 12 个 ADR、模块与文件清单、请求生命周期、可靠性、分发与 AV/EDR |
 | 06 | `06-protocol-spec.md` | ~700 | 传输层、信封、能力目录、Selector、**坐标系**、**IME**、错误码、幂等、事务、鉴权 |
-| 07 | `07-capability-registry.md` | 2640 | **162 条能力注册表**（v1/v1.5/v2 切分）+ 17 条显式不支持 + 覆盖矩阵 |
+| 07 | `07-capability-registry.md` | — | **能力注册表权威源**（v1/v1.5/v2 切分 + `tier` 列）+ 17 条显式不支持 + 覆盖矩阵。**所有能力条数以本文件 §0.7 实测表行为准** |
 | 08 | `08-agent-integration.md` | ~450 | 四种接入路径、三种 tools 导出、**AI Skill 包**、5 个中文端到端用例、system prompt 模板、**15 条反模式** |
 | 09 | `09-roadmap.md` | ~400 | 里程碑、任务分解（含文件清单）、依赖图、PoC 排期、白名单清单、风险登记册 |
-| 10 | `10-winuse-bench.md` | 555 | 30 个 Bench 任务、评分体系、覆盖盲区、开源策略分析 |
+| 10 | `10-winuse-bench.md` | — | 30 个 Bench 任务、评分体系、覆盖盲区、开源策略分析 |
 | 11 | `11-assumptions-register.md` | ~200 | **28 条待验证依赖与假设登记** |
 
 **建议阅读顺序**：00 → 02（看模式抽取）→ 06 + 08（看怎么用）→ 05 + 07（看怎么实现）→ 09（看排期）→ 11（看哪些还没验证）。

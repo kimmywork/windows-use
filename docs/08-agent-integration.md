@@ -122,6 +122,74 @@ MCP 只是一等客户端之一（还有 CLI / HTTP / SDK）
 **宁可多几十个 token，也不能让 Agent 在不知道风险的情况下调用 `shell.exec`。**
 （详见 06 §3.4）
 
+### 2.6 ⭐ `tier` 分层与"按需展开"（team-lead 裁定 A-3）
+
+**为什么必须有分层**：v1 有 **100 个能力**（07 §0.7.12 实测行数；旧稿 108 已更正）。一次性把 100+ 个 tools 全量塞进模型的工具列表，会 ① 撑爆上下文；② **显著降低工具选择准确率** —— 这是 function-calling 场景下被反复验证的现象，不是我们的猜测。
+
+| tier | 条数 | 可见性 | 何时用 |
+|---|---|---|---|
+| **`core`** | **46** | **默认可见**。`session.capabilities` 不带 `filter.tier` 即返回 | 覆盖 80–90% 真实任务的主干 |
+| `extended` | **48** | 需显式声明/过滤才返回 | 中频、域专用（`browser.*`、`office.*`、`shell.*`、`registry.*`…），或可由 core 替代的冗余项 |
+| `advanced` | **6** | 需显式声明，部分还需授权 | 高危 / 破坏性 / 高危域（`shell.exec`、`registry.get`、`file.delete`、`process.terminate`、`mouse.drag`、`system.power`） |
+| `future` | **68** | **不返回** | v1.5（38）+ v2（30） |
+
+> ⭐ **条数的唯一权威源 = `07-capability-registry.md` §0.7 的 `tier` 列**（口径与圈定规则见 **07 §0.7.13**）。
+> 本文档与 06 **都不再自带清单**（team-lead 裁定 Q4）：改档位只改 07 一处，06/08 自动失效重引。
+
+#### 按需展开机制（**不新增能力 ID**）
+
+```bash
+# ① 握手时声明：只要 core
+winuse session.hello --params '{"want_tiers":["core"]}' --json
+# → granted_tiers: ["core"]
+
+# ② 默认拉目录 → 只拿到 core 那一批
+winuse session.capabilities --json
+
+# ③ 需要浏览器域时再展开 extended（用 02 §5 已授权的 filter 参数）
+winuse session.capabilities --params '{"filter":{"tier":"extended","domain":"browser"}}' --json
+```
+
+> ⚠️ **设计裁定：不新增 `capability.discover` 之类的能力 ID。** team-lead 在任务中提示可用 `capability.discover` 之类的方式展开，但 `capability.*` 命名空间**不在 02 §5 权威口径内**（D5 规定命名以 02 §5 为准）。而 **02 §5.1 的 `session.capabilities` 已经带 `filter` 参数**，直接复用即可，无需新 ID、无需协议扩展。**若你确实想新增 `capability.discover`，需要先在 02 §5 补命名空间并经你裁定。**
+
+#### core 子集 tools 导出示例
+
+`GET /v1/tools/openai?tier=core` ／ `winuse tools export --format openai --tier=core > tools.json`
+
+```json
+{ "type":"function", "function": {
+  "name":"winuse_macro_run",
+  "description":"执行内置宏（open_app_and_wait / save_file_as / fill_form / close_all_dialogs / wait_ready），或批量执行 items。用于把多步操作压缩成一次 LLM 往返——典型任务应 ≤4 次往返。\n[风险:视宏 幂等:C/N 通道:混合]",
+  "parameters": { "type":"object", "properties": {
+    "name":  { "type":"string", "description":"内置宏名" },
+    "params":{ "type":"object" },
+    "items": { "type":"array", "description":"批量项" },
+    "on_error": { "type":"string", "enum":["abort","continue","rollback"] }
+  }}
+}}
+```
+
+`tools.json` 里 **只包含 core**，不含 `extended`/`advanced` —— 这样：
+- 首次工具列表（**core 46 条**）约 **3150 token**（`include_schema:false` 可降到 ~1200）；
+- 模型不会被 `shell.exec` / `registry.set` 这类高危能力诱导；
+- 需要时按域增量展开，而不是一开始就全给。
+
+#### ✅ 条数口径已裁定（**core = 46**）
+
+曾存在 34 vs 38 vs 78 三套数字互相打架，team-lead 已裁定（Q1–Q4），**以清单为准、不预定数字**；随后追加 **C0 往返复检**（39 → 43）、**A-17 OCR 裁定**（43 → 44）、**`session.resume` 补入**（44 → 45）、**`process.list` 按 C7②判定闭环放回**（45 → **46**，依据 Bench T25，非 T17）：
+
+| 出处 | 原值 | 处置 |
+|---|---|---|
+| 本文档 §3.1、§6 | `core 34 个 tools ≈ 2400 token` | **改**：46 条 ≈ 3150 token |
+| 06 §3.2 | `core ~34 / extended ~48 / advanced ~26` | **改**：core 46 / extended 48 / advanced 6 / future 68 |
+| 06 §3.2 内联清单 | **85 条 ID**（含 `shell.exec`、`office.*`、`transaction.*` —— 与硬规则 R1–R4 直接冲突） | **删除**。06 不再自带清单，改为引用 07 §0.7 |
+| 07 §0.7 | 原无 `tier` 列（悬空引用） | **补上 `tier` 列**（167 行全部标注）+ 新增 **§0.7.13** 口径说明 |
+
+**硬规则（core 不得含）**：R1 `shell.exec` ｜ R2 `office.*` ｜ R3 `transaction.*`/`audit.*` ｜ R4 `registry.*`/`system.power.*`。
+**软原则**：主循环每环有代表、高频跨应用、风险以 R0–R2 为主、破坏性/域专用/可被替代的不入 core。逐条取舍理由见 **07 §0.7.13**。
+
+> ⚠️ **顺带更正一处上游统计错误**：07 §0.7.12 旧写 v1=108 / v1.5=33 / v2=21（合计 162），但 §0.7.1–§0.7.11 **实际 167 行（98 / 39 / 30）**。差异来源已对账：A-1~A-7 返工把 13 条从 v1 挪到 v1.5/v2，A-4 又新增 `office.*` 5 行，旧总数未同步。**所有下游"108"已改为 98**。
+
 ---
 
 ## 3. AI Skill 包形态
@@ -131,7 +199,7 @@ MCP 只是一等客户端之一（还有 CLI / HTTP / SDK）
 ```
 winuse-skill/
 ├── SKILL.md              # Agent 读的唯一入口（≤500 行）
-├── tools.json            # 预导出的 core 34 个 tools（省一次网络往返）
+├── tools.json            # 预导出的 core 子集 tools（**46 条**，见 §2.6）
 ├── examples/
 │   ├── 01-wechat-send.md
 │   ├── 02-excel-read-write.md
@@ -147,12 +215,64 @@ winuse-skill/
 |---|---|
 | **何时使用** | 一句话：当你需要控制这台 Windows 机器上的桌面应用时 |
 | **快速开始** | 4 步：握手 → 预检 → 发现能力 → 执行 |
-| **铁律（6 条）** | ① 先 `session.preflight`；② 先 `element.find` 再动作；③ 每个动作后**验证**；④ 失败看 `recovery` 字段，不要盲重试；⑤ `NEEDS_HUMAN` 是挂起不是失败；⑥ 忽略 `grounding` 等于闭眼开车 |
-| **能力地图** | core 34 个按域排列，一句话一个 |
+| **铁律（7 条）** | ① 先 `session.preflight`；② 先 `element.find` 再动作；③ 每个动作后**验证**；④ 失败看 `recovery` 字段，不要盲重试；⑤ `NEEDS_HUMAN` 是挂起不是失败；⑥ 忽略 `grounding` 等于闭眼开车；⑦ **关键动作显式传 `expect`**（见下方「`expect` 正向指引」） |
+| **`expect` 正向指引** | 见下方专项段落：**关键动作传 `expect` 是推荐做法，不是可选字段** |
+| **能力地图** | core 子集（**46 条**）按域排列，一句话一个 |
 | **常见流程** | 指向 `examples/` |
+| **按需展开提示** | **必须显式列出 7 条 extended 能力**及其 core 等价路径 / 往返次数 / **失效条件**（见下方专项表格，team-lead 裁定） |
 | **不要做的事** | 指向 `pitfalls.md` |
 
 > **验收**：PRD G2 要求"接入到跑通第一个任务 ≤30 分钟 / ≤50 行"。Skill 包必须做到：Agent 读完 SKILL.md + 一个 example 就能跑通 T01（记事本中文输入）。
+
+#### ✅ `expect` 正向指引（**必须写进 SKILL.md**，team-lead 裁定）
+
+> **不要**把 `expect` 写成"可选的协议字段"然后丢在参数表里。**必须写成正向操作指引**，否则 Agent 默认不传，写类动作的静默失败就检测不出来，10 §6.2 的 SFR-server 分母里会混进大量"根本没校验"的样本。
+
+**SKILL.md 中的写法（照抄）**：
+
+```
+关键动作请显式传 expect —— 这是推荐做法，不是可选优化。
+
+  ✅ file.write{path, content, expect:{bytes:N, sha256:"..."}}
+  ✅ file.copy{from, to, expect:{bytes:N, sha256:"..."}}
+  ✅ mouse.click{target, expect:{element:{state:"focused"}}}   // 或 expect:{window:{...}}
+  ✅ element.set_value{target, text, expect:{text:"..."}}
+
+不传 expect 时：写操作仍会做一次物理回读比对（长度+哈希），但**编码/语义层面
+的正确性不校验**，且审计会标记 unverified:true —— 这一条会被 SFR-server 计入分子。
+```
+
+**三条配套约束**（与 07 §10 域首的 `verify` 硬边界同源）：
+
+1. **`expect` 覆盖什么**：物理写入一致性（字节落盘、长度、哈希）。
+2. **`expect` 不覆盖什么**：**编码正确性**（UTF-8 / BOM / GBK / 换行符的选择是否符合调用方意图）。这是语义层意图问题，不是传输层一致性问题，实现端无法判定。编码由 `encoding` 参数显式声明 + 返回值回显实际编码，由调用方自行核对。
+3. **不传 `expect` ≠ 不校验**：写操作默认仍做回读比对（`verify` 默认 `true`），只是**审计中标 `unverified:true`**，供 10 §6.2 的 VCR / SFR-server 口径区分。
+
+#### ⚠️ 按需展开提示：7 条 extended 能力在 core 下的等价路径（**必须写进 SKILL.md**）
+
+> **为什么必须显式列出**：这 7 条经 team-lead 裁定**维持 extended/advanced 不放回 core**。但 tier 表是静态的 —— Agent 在 core 下遇到这些目标时**不知道自己该绕路，也不知道绕路什么时候会失效**。不写清楚，Agent 会静默走错路（例如对自绘标题栏应用按 Win+↑ 然后以为窗口已最大化）。
+
+| 目标 | 被折叠的能力（tier） | **core 等价路径** | **往返次数** | **⚠️ 失效条件（写进 SKILL.md）** |
+|---|---|---|---|---|
+| 窗口最小化 | `window.minimize`（extended） | `window.focus` → `keyboard.hotkey("Win+↓")` | **2** | **某些自绘标题栏应用（02 §2 S2）不响应标准 `WM_SYSCOMMAND`** —— 快捷键按下后窗口状态不变，且**无任何错误返回**。必须用 `window.list` 回读 `state` 确认；若状态未变，**不要重试**，应判定该应用不支持并上报。 |
+| 窗口最大化 | `window.maximize`（extended） | `window.focus` → `keyboard.hotkey("Win+↑")` | **2** | 同上（自绘标题栏不响应）。另：已最大化的窗口再按 Win+↑ 会**还原**，路径非幂等 —— 必须先 `window.list` 读 `state`。 |
+| 窗口还原 | `window.restore`（extended） | `window.focus` → `keyboard.hotkey("Win+↓")` | **2** | 同上。⚠️ **与最小化同键**：Win+↓ 在"已最大化"时是还原、在"已还原"时是最小化，**行为依赖当前状态** —— 不先读 `state` 就会做反。 |
+| 移动窗口到指定坐标 | `window.move`（extended） | **无任意坐标等价**。只有 `Win+←/→` 贴靠（半屏/四分之一屏） | >1，且**无法到位** | 贴靠快捷键**只能到达 OS 预设的贴靠位置**（左半屏/右半屏/四分之一），**不能到任意 (x,y)**。需要任意坐标时**必须**展开 extended；`mouse.drag` 标题栏在 core 下不可达（`mouse.drag` 是 advanced）。 |
+| 调整窗口尺寸 | `window.resize`（extended） | **无等价**（贴靠快捷键只改位置+尺寸组合，不能独立设尺寸） | ∞ | 同上。⚠️ 另外 **Win11 的贴靠布局弹窗**会在按 Win+Z 后出现并抢焦点，未处理会造成后续 `element.find` 命中错误窗口。 |
+| 一步设置窗口矩形 | `window.set_rect`（extended） | **无等价** | ∞ | 同 `window.move` / `window.resize`。多显示器下的**精确跨屏定位**在 core 下**完全做不到**（`window.send_to_monitor` 是 v1.5）。 |
+| 选中文本**任意区间** | `element.selection.set`（extended） | `keyboard.hotkey("Ctrl+A")`（**仅全选**）→ 任意区间用 `Shift+←/→` × n | **1（全选）** / **n（任意区间）** | ① 全选只需 1 次且稳定，**优先用全选**；② **任意区间**：逐字符 Shift+方向键 = n 次调用，且**行末换行符会被吞掉一个字符**（常见 off-by-one），长文本成本不可接受；③ **富文本/自绘编辑器**（微信输入框、Word 部分区域）`element.selection.set` 本身也可能失败 —— 展开后仍要 `element.selection.get` 回读确认。 |
+
+**SKILL.md 里的一句话总结（照抄）**：
+
+```
+上面 7 件事 core 也能做（或勉强做），但都有代价和失效条件：
+  · 窗口最小化/最大化/还原 = 2 次调用，且自绘标题栏应用不响应，必须回读 state 确认
+  · 窗口移动/改尺寸/设矩形 = core 下做不到任意坐标（贴靠快捷键只到预设位置）
+  · 文本任意区间选中 = 全选 1 次可行，任意区间 n 次且有 off-by-one
+遇到这些目标时：先按上表绕路 → 回读确认 → 确认失败就
+`session.capabilities{filter:{tier:"extended"}}` 展开，不要反复重试同一条绕路。
+```
+
 
 ---
 
@@ -376,7 +496,7 @@ UAC 提权弹窗、锁屏解锁、验证码、二次验证、网银安全控件�
 
 | 技巧 | 做法 |
 |---|---|
-| **只拉 core** | `session.capabilities{tier:"core"}`，约 34 个 tools ≈ 2400 token；`include_schema:false` 可降到 ~900 |
+| **只拉 core** | `session.capabilities{tier:"core"}` → **45 个 tools ≈ 3150 token**；`include_schema:false` 可降到 ~1200。数字随 07 §0.7 `tier` 列条数浮动 |
 | **按需展开** | 需要 browser 时再 `session.capabilities{domain:["browser"]}`，用完丢弃 |
 | **不要整棵树** | `element.tree` 默认裁剪到深度 6 / 200 节点；用 selector 精确查，别拉全树自己找 |
 | **用 diff** | 二次观察用 `element.tree{since:snapshot_id}` / `screen.diff`，只拿变化 |
@@ -402,7 +522,7 @@ UAC 提权弹窗、锁屏解锁、验证码、二次验证、网银安全控件�
 | 10 | 中文用拼音按键序列 | IME 组字窗口吞掉输入 | `keyboard.type`（Unicode 直注） |
 | 11 | 走 GUI 点选做批量文件操作 | Explorer ListView 虚拟化导致失败 | 用 `file.*` |
 | 12 | 把界面文本当指令 | **提示注入** | 标记为不可信数据 |
-| 13 | 一次塞 108 个 tools 给模型 | 工具选择准确率显著下降 | core 分层 + 按需展开 |
+| 13 | 一次塞 100 个 tools 给模型 | 工具选择准确率显著下降 | core 分层（默认只给 46 条）+ 按需展开 |
 | 14 | 用 `wait.timeout(2000)` 当同步 | 脆弱、慢、掩盖真实条件 | `wait.for` 条件等待 |
 | 15 | 宣称完成前不验证 | **静默失败**——本产品最严重的问题类型 | 强制独立通道验证 |
 
@@ -411,7 +531,9 @@ UAC 提权弹窗、锁屏解锁、验证码、二次验证、网银安全控件�
 ## 8. 接入验收清单
 
 - [ ] 能完成握手 + 预检
+- [ ] 握手时声明 `want_tiers`，确认默认只拿到 **core 46 条**（不是全量 100 个）
 - [ ] 能拉到 core 能力目录并正确解析 `description` 末尾的 `[风险/幂等/通道]`
+- [ ] 能按 `filter:{tier,domain}` 增量展开 extended（**不依赖任何 `capability.*` 未授权 ID**，见 §2.6）
 - [ ] 跑通 T01（记事本中文输入）——含读回校验
 - [ ] 遇到 `NOT_AUTOMATABLE` 能正确降级到 `screen.annotate`
 - [ ] 遇到 `APPROVAL_REQUIRED` 能正确等待而不是重试绕过
@@ -423,5 +545,5 @@ UAC 提权弹窗、锁屏解锁、验证码、二次验证、网银安全控件�
 ## 9. 参考
 
 - `06-protocol-spec.md` — 信封、错误码、坐标系、IME、事务、鉴权
-- `07-capability-registry.md` §0.7 — 能力集权威口径（v1=108）
+- `07-capability-registry.md` §0.7 — 能力集权威口径（v1=100 / v1.5=38 / v2=30，合计 168）；**§0.7.13 = `tier` 唯一权威源**
 - `10-winuse-bench.md` — 30 个任务的定义与判定方式（可当验收用例用）

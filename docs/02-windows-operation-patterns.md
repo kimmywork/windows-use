@@ -527,6 +527,10 @@ graph LR
 | `session.set_mode` | 切换权限模式 | `mode: observe\|standard\|elevated` | 生效模式 | `PERMISSION_DENIED`（需提权重启） | R1 | I |
 | `session.subscribe` | 订阅事件流（SSE/WS）：元素出现、窗口创建/销毁、剪贴板变化、进程退出、Toast、DPI 变化、锁屏 | `events[]`, `scope` | `subscription_id` | — | R0 | I |
 | `session.cancel` | 取消进行中的动作 | `action_id` / `cancel_token` | 取消结果 | `NOT_CANCELLABLE` | R1 | I |
+| `session.resume` ⭐**新增** | **恢复被挂起的动作**（`NEEDS_HUMAN` 挂起-恢复协议的另一半；挂起 ≠ 失败，见 P11） | `resume_token`, `outcome`（`completed` / `aborted`） | 恢复结果；**`resume_token` 过期返回 `TIMEOUT` 而非 `APPROVAL_DENIED`**（语义不同：前者是没人来处理，后者是被拒绝） | `RESUME_TOKEN_INVALID` / `TIMEOUT` | R1 | C |
+
+> ⭐ **`session.resume` 为什么新增（2026-09-22）**：`06` §9.3 已定义这个方法（含 `resume_token`、到期转 `TIMEOUT` 的完整挂起-恢复协议），但它**既不在本节，也不在 `07` §0.7.1** —— 按 team-lead 的命名权威口径，**能力 ID 以本节为唯一权威**，因此 `session.resume` 此前是**未授权 ID**。现补入本节，使 T17（UAC 上报）依赖的能力有权威 ID。
+> **连带**：`session.*` 由 7 条变为 **8 条**，本节合计随之变化；**`07` §0.7.1 需同步补一行**（架构师维护），条数权威口径仍以 `07` §0.7 为准。
 
 ### 5.2 系统 `system.*` / 显示器 `display.*`
 
@@ -725,7 +729,7 @@ selector := { automation_id?, control_type?, name?, name_match: exact|prefix|con
 
 | 命名空间 | 能力数 | 主要风险分布 |
 |---|---|---|
-| `session.*` | 7 | R0–R1 |
+| `session.*` | 8（含新增 `session.resume`，见 §5.1） | R0–R1 |
 | `system.*` / `display.*` | 8 | R0–R4 |
 | `process.*` / `window.*` | 17 | R0–R2 |
 | `element.*` | 21 | R0–R3 |
@@ -738,7 +742,10 @@ selector := { automation_id?, control_type?, name?, name_match: exact|prefix|con
 | `registry.*` / `notify.*` | 7 | R0–R4 |
 | `macro.*` / `transaction.*` / `undo.*` / `audit.*` | 10 | R0–R2 |
 | `wait.*` | 4 | R0 |
-| **合计** | **~133** | — |
+| **合计** | **~134** | — |
+
+> ⚠️ **口径说明（2026-09-22）**：本表按**表格行**统计为 ~134 条；按**能力逐个展开**后的条数见 `07-capability-registry.md` §0.7（**权威口径**，该表为逐条展开口径，本表为表格行口径，两者不矛盾）。
+> 两者**不矛盾**：本表大量行用 `a / b / c` 合并书写（如 `window.minimize/maximize/restore` 占一行），展开后条数自然变多。**凡涉及能力条数、版本归属、tier 分布的引用，一律以 `07` §0.7 为准**，本表的 ~133 仅用于说明"覆盖了多少个功能面"。
 
 ---
 

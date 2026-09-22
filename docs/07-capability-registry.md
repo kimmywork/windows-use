@@ -96,245 +96,390 @@ graph BT
 > **命名权威口径声明（team-lead 裁定 D5）**：自本版起，**能力 ID 以 `docs/02-windows-operation-patterns.md` §5 为唯一权威**。
 > 本文档 §1–§15 中使用的技术侧 ID（如 `window.activate`、`text.set`、`vision.ocr`）**保留为技术可行性描述**，其到权威 ID 的映射见下表「07 技术条目」列；**二者冲突时以本表（02 §5 口径）为准**。
 >
-> **关于条数**：02 §5.14 自报"约 133 条"是按表格行数统计（其中大量行用 `a / b / c` 合并书写）。**按能力逐个展开后实为 162 条**。本表按展开口径列全，并因此修正统计。
+> **关于条数**：02 §5.14 自报"约 133 条"是按表格行数统计（其中大量行用 `a / b / c` 合并书写）。**按能力逐个展开后为 162 条**；本表在此之上再计入 A-4 裁定新增的 **`office.*` 5 条**（`office.attach` / `office.excel.range` / `office.word.text` / `office.outlook.send` / `office.wps.*`），**故本表实际共 167 行（v1 98 / v1.5 39 / v2 30）**。旧统计的 108/33/21=162 已作废，详见 §0.7.12。
 
-**图例**：`归属` = v1（MVP 必做）/ v1.5 / v2 ｜ `P级` = PRD 需求池编号 ｜ `风险` = 02 §6 的 R0–R4 ｜ `幂等` = I/C/N
+**图例**：`归属` = v1（MVP 必做）/ v1.5 / v2 ｜ `P级` = PRD 需求池编号 ｜ `风险` = 02 §6 的 R0–R4 ｜ `幂等` = I/C/N ｜ **`tier`** = 暴露层级（`core` / `extended` / `advanced` / `future`，口径见 **§0.7.13**）
 
-#### 0.7.1 `session.*`（7 条）
+> ⭐ **`tier` 列是 tier 的唯一权威源**（team-lead 裁定 Q4）：06 协议规范与 08 接入指南**一律引用本列，不再自带清单**。
 
-| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | 07 技术条目 |
-|---|---|---|---|---|---|---|
-| `session.hello` | 握手（版本/权限模式/会话 ID） | R0 | I | P0-1 | **v1** | `session.begin` |
-| `session.capabilities` | 自描述能力目录（含 Schema/风险/幂等） | R0 | I | P0-3 | **v1** | 新增（07 缺） |
-| `session.preflight` | 环境前置校验（锁屏/UAC/屏保/RDP/IL/显示器） | R0 | I | P0-13 | **v1** | `system.environment` |
-| `session.status` | 健康与负载（队列/当前动作/uptime） | R0 | I | P0-1 | **v1** | 新增 |
-| `session.set_mode` | 切换权限模式 observe/standard/elevated | R1 | I | P0-11 | **v1** | `session.begin.approvalPolicy` |
-| `session.subscribe` | 事件订阅（SSE/WS） | R0 | I | P1-7 | **v1.5** | 新增 |
-| `session.cancel` | 取消进行中动作 | R1 | I | P1-11 | **v1.5** | `session.abort`（提为 v1 子集） |
+#### 0.7.1 `session.*`（8 条）
+
+| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | **tier** | 07 技术条目 |
+|---|---|---|---|---|---|---|---|
+| `session.hello` | 握手（版本/权限模式/会话 ID） | R0 | I | P0-1 | **v1** | **core** | `session.begin` |
+| `session.capabilities` | 自描述能力目录（含 Schema/风险/幂等） | R0 | I | P0-3 | **v1** | **core** | 新增（07 缺） |
+| `session.preflight` | 环境前置校验（锁屏/UAC/屏保/RDP/IL/显示器） | R0 | I | P0-13 | **v1** | **core** | `system.environment` |
+| `session.status` | 健康与负载（队列/当前动作/uptime） | R0 | I | P0-1 | **v1** | extended | 新增 |
+| `session.set_mode` | 切换权限模式 observe/standard/elevated | R1 | I | P0-11 | **v1** | extended | `session.begin.approvalPolicy` |
+| `session.resume` | **恢复被 `NEEDS_HUMAN` 挂起的动作**（P11 挂起 ≠ 失败的另一半） | R1 | C | P0-11 | **v1** | **core** | 新增（02 §5.1 已由 PM 补入；见下方说明） |
+| `session.subscribe` | 事件订阅（SSE/WS） | R0 | I | P1-7 | **v1.5** | future | 新增 |
+| `session.cancel` | 取消进行中动作 | R1 | I | P1-11 | **v1.5** | future | `session.abort`（提为 v1 子集） |
 
 #### 0.7.2 `system.*` + `display.*`（8 条）
 
-| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | 07 技术条目 |
-|---|---|---|---|---|---|---|
-| `system.info` | OS 版本/构建/语言/区域/会话 ID/完整性级别 | R0 | I | P0-13 | **v1** | `system.environment` 子集 |
-| `system.idle` | 用户输入空闲时长 | R0 | I | P0-9 | **v1** | 新增（`wait.idle` 依赖） |
-| `system.power` | 电源状态查询 | R0 | I | — | **v1** | 注：与 07 的 `system.power`（**关机/重启，R4**）**同名冲突** → 见下方 ⚠️ |
-| `system.setting.get` | 读系统设置项 | R0 | I | — | **v2** | 新增 |
-| `system.setting.set` | 写系统设置项 | R4 | C | — | **v2** | 新增（默认禁用） |
-| `system.env.get` | 读环境变量 | R0 | I | — | **v1.5** | 新增 |
-| `display.list` | 显示器列表（bounds/work_area/primary/scale/dpi/朝向） | R0 | I | P0-14 | **v1** | `system.displays` |
-| `display.dpi` | 每显示器 DPI + 本进程感知等级 + 坐标系说明 | R0 | I | P0-14 | **v1** | `system.displays` |
+| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | **tier** | 07 技术条目 |
+|---|---|---|---|---|---|---|---|
+| `system.info` | OS 版本/构建/语言/区域/会话 ID/完整性级别 | R0 | I | P0-13 | **v1** | **core** | `system.environment` 子集 |
+| `system.idle` | 用户输入空闲时长 | R0 | I | P0-9 | **v1** | extended | 新增（`wait.idle` 依赖） |
+| `system.power` | 电源状态查询 | R0 | I | — | **v1** | advanced | 注：与 07 的 `system.power`（**关机/重启，R4**）**同名冲突** → 见下方 ⚠️ |
+| `system.setting.get` | 读系统设置项 | R0 | I | — | **v2** | future | 新增 |
+| `system.setting.set` | 写系统设置项 | R4 | C | — | **v2** | future | 新增（默认禁用） |
+| `system.env.get` | 读环境变量 | R0 | I | — | **v1.5** | future | 新增 |
+| `display.list` | 显示器列表（bounds/work_area/primary/scale/dpi/朝向） | R0 | I | P0-14 | **v1** | **core** | `system.displays` |
+| `display.dpi` | 每显示器 DPI + 本进程感知等级 + 坐标系说明 | R0 | I | P0-14 | **v1** | extended | `system.displays` |
 
 > ⚠️ **命名冲突已记录**：02 §5.2 的 `system.power` 是**查询**（R0），07 §13.6 的 `system.power` 是**关机/重启/锁屏**（destructive）。
 > **裁定**：`system.power` 保留为**查询**（遵循 02 口径）；电源动作改名为 **`system.power.act`**（R4，v2，默认拒绝）。此改名需在 06 协议规范中固化。
 
 #### 0.7.3 `process.*`（5 条）+ `window.*`（19 条）
 
-| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | 07 技术条目 |
-|---|---|---|---|---|---|---|
-| `process.list` | 进程列表（含完整性级别） | R0 | I | P0-8 | **v1** | `process.list` |
-| `process.start` | 启动（exe/开始菜单项/UWP AUMID/关联打开） | R1 | N | P0-8 | **v1** | `process.launch` / `shell.open` |
-| `process.terminate` | 温和终止 | R2 | C | P0-8 | **v1** | `window.close`(force) |
-| `process.kill` | 强制终止 | R2 | C | — | **v1.5** | `process.terminate`(force) |
-| `process.wait` | 等待进程状态 | R0 | I | P0-8 | **v1** | 新增 |
-| `window.list` | 窗口列表（z-order/显示器/状态/虚拟桌面/进程） | R0 | I | P0-8 | **v1** | `window.list` |
-| `window.find` | 按条件查找（title/class/process） | R0 | I | P0-8 | **v1** | `window.get` |
-| `window.focus` | 激活到前台 | R1 | I | P0-8 | **v1** | `window.activate` |
-| `window.state.get` | 窗口状态与 rect/monitor | R0 | I | P0-8 | **v1** | `window.get` |
-| `window.minimize` | 最小化 | R1 | I | P0-8 | **v1** | `window.setPlacement` |
-| `window.maximize` | 最大化 | R1 | I | P0-8 | **v1** | `window.setPlacement` |
-| `window.restore` | 还原 | R1 | I | P0-8 | **v1** | `window.setPlacement` |
-| `window.close` | 关闭 | R1 | I | P0-8 | **v1** | `window.close` |
-| `window.move` | 移动 | R1 | I | P0-8 | **v1** | `window.setPlacement` |
-| `window.resize` | 调整大小 | R1 | I | P0-8 | **v1** | `window.setPlacement` |
-| `window.set_rect` | 一次设置位置+尺寸 | R1 | I | P0-8 | **v1** | `window.setPlacement` |
-| `window.snap` | 贴靠布局（左/右/上/下/象限/最大化） | R1 | I | P1-15 | **v1.5** | 新增 |
-| `window.send_to_monitor` | 移到指定显示器（返回 DPI 变化后新尺寸） | R1 | I | P0-14 | **v1.5** | `window.setPlacement.monitorId` |
-| `window.virtual_desktop.get` | 查询窗口所在虚拟桌面 | R1 | I | P1-15 | **v1.5** | `system.virtualDesktops` |
-| `window.virtual_desktop.move` | 移动窗口到指定虚拟桌面 | R1 | C | P1-15 | **v1.5** | `system.virtualDesktops` |
-| `window.virtual_desktop.switch` | **切换**虚拟桌面 | R2 | C | P1-15 | **v2（且标记 ⚠️脆弱）** | 见 §16 显式不支持 #8 |
-| `window.wait` | 等待窗口状态 | R0 | I | P0-9 | **v1** | `window.wait` |
-| `window.tree` | 窗口 UIA 子树（带 snapshot_id） | R0 | I | P0-5 | **v1** | `element.tree` |
-| `window.capture` | 窗口截图 | R0 | I | — | **v1** | `screen.capture` |
+| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | **tier** | 07 技术条目 |
+|---|---|---|---|---|---|---|---|
+| `process.list` | 进程列表（含完整性级别） | R0 | I | P0-8 | **v1** | **core** | `process.list` |
+| `process.start` | 启动（exe/开始菜单项/UWP AUMID/关联打开） | R1 | N | P0-8 | **v1** | **core** | `process.launch` / `shell.open` |
+| `process.terminate` | 温和终止 | R2 | C | P0-8 | **v1** | advanced | `window.close`(force) |
+| `process.kill` | 强制终止 | R2 | C | — | **v1.5** | future | `process.terminate`(force) |
+| `process.wait` | 等待进程状态 | R0 | I | P0-8 | **v1** | extended | 新增 |
+| `window.list` | 窗口列表（z-order/显示器/状态/虚拟桌面/进程） | R0 | I | P0-8 | **v1** | **core** | `window.list` |
+| `window.find` | 按条件查找（title/class/process） | R0 | I | P0-8 | **v1** | **core** | `window.get` |
+| `window.focus` | 激活到前台 | R1 | I | P0-8 | **v1** | **core** | `window.activate` |
+| `window.state.get` | 窗口状态与 rect/monitor | R0 | I | P0-8 | **v1** | extended | `window.get` |
+| `window.minimize` | 最小化 | R1 | I | P0-8 | **v1** | extended | `window.setPlacement` |
+| `window.maximize` | 最大化 | R1 | I | P0-8 | **v1** | extended | `window.setPlacement` |
+| `window.restore` | 还原 | R1 | I | P0-8 | **v1** | extended | `window.setPlacement` |
+| `window.close` | 关闭 | R1 | I | P0-8 | **v1** | **core** | `window.close` |
+| `window.move` | 移动 | R1 | I | P0-8 | **v1** | extended | `window.setPlacement` |
+| `window.resize` | 调整大小 | R1 | I | P0-8 | **v1** | extended | `window.setPlacement` |
+| `window.set_rect` | 一次设置位置+尺寸 | R1 | I | P0-8 | **v1** | extended | `window.setPlacement` |
+| `window.snap` | 贴靠布局（左/右/上/下/象限/最大化） | R1 | I | P1-15 | **v1.5** | future | 新增 |
+| `window.send_to_monitor` | 移到指定显示器（返回 DPI 变化后新尺寸） | R1 | I | P0-14 | **v1.5** | future | `window.setPlacement.monitorId` |
+| `window.virtual_desktop.get` | 查询窗口所在虚拟桌面 | R1 | I | P1-15 | **v1.5** | future | `system.virtualDesktops` |
+| `window.virtual_desktop.move` | 移动窗口到指定虚拟桌面 | R1 | C | P1-15 | **v1.5** | future | `system.virtualDesktops` |
+| `window.virtual_desktop.switch` | **切换**虚拟桌面 | R2 | C | P1-15 | **v2（且标记 ⚠️脆弱）** | future | 见 §16 显式不支持 #8 |
+| `window.wait` | 等待窗口状态 | R0 | I | P0-9 | **v1** | extended | `window.wait` |
+| `window.tree` | 窗口 UIA 子树（带 snapshot_id） | R0 | I | P0-5 | **v1** | extended | `element.tree` |
+| `window.capture` | 窗口截图 | R0 | I | — | **v1** | extended | `screen.capture` |
 
 #### 0.7.4 `element.*`（23 条，核心）
 
-| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | 07 技术条目 |
-|---|---|---|---|---|---|---|
-| `element.find` | 选择器定位（含 require_unique） | R0 | I | P0-5 | **v1** | `element.find` |
-| `element.count` | 只问数量（消歧用，便宜） | R0 | I | P0-5 | **v1** | 新增 |
-| `element.get` | 用稳定句柄取属性快照 | R0 | I | P0-5 | **v1** | `element.get` |
-| `element.tree` | 子树快照 / diff（`since`） | R0 | I | P0-5 | **v1** | `element.tree` |
-| `element.property.get` | 读指定属性 | R0 | I | P0-5 | **v1** | `element.get` |
-| `element.wait` | 等待元素状态 | R0 | I | P0-9 | **v1** | `element.wait` |
-| `element.invoke` | **UIA InvokePattern（首选，可绕 UIPI）** | R1–R3 | C | P0-6 | **v1** | `element.invoke` |
-| `element.set_value` | UIA ValuePattern 设值 | R1–R3 | C | P0-6 | **v1** | `text.set`(strategy=valuePattern) |
-| `element.set_range_value` | 滑块/数值/进度 | R1 | C | — | **v1.5** | 新增 |
-| `element.toggle` | 勾选/开关 | R1 | C | P0-6 | **v1** | `element.invoke`(action=toggle) |
-| `element.select` | 列表/树/标签选择 | R1 | C | P0-6 | **v1** | `element.invoke`(action=select) |
-| `element.expand_collapse` | 树/组合框展开收起 | R1 | C | P0-6 | **v1** | `element.invoke`(action=expand) |
-| `element.scroll` | 滚动 / 滚动到可见 | R1 | C | P0-6 | **v1** | `element.scroll` |
-| `element.focus` | 设置键盘焦点 | R1 | I | P0-6 | **v1** | `element.focus` |
-| `element.text.get` | 读文本（TextPattern） | R0 | I | P0-5 | **v1** | `text.readback` |
-| `element.caret.get` | 读字符级光标位置 | R1 | C | — | **v1.5** | 新增（OSWorld-G 列为精细操作） |
-| `element.caret.set` | 设字符级光标位置 | R1 | C | — | **v1.5** | 新增 |
-| `element.selection.get` | 读文本选区 | R1 | C | — | **v1** | `text.selection`(get) |
-| `element.selection.set` | 设文本选区 | R1 | C | — | **v1** | `text.selection`(set) |
-| `element.rect` | 几何矩形 | R0 | I | P0-5 | **v1** | `element.get.rect` |
-| `element.center` | 中心点 | R0 | I | P0-5 | **v1** | `mouse.click`(elementId) |
-| `element.highlight` | 调试高亮 | R0 | I | P0-12 | **v1** | `element.highlight` |
-| `element.exists` | 是否存在 | R0 | I | P0-9 | **v1** | 新增 |
+| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | **tier** | 07 技术条目 |
+|---|---|---|---|---|---|---|---|
+| `element.find` | 选择器定位（含 require_unique） | R0 | I | P0-5 | **v1** | **core** | `element.find` |
+| `element.count` | 只问数量（消歧用，便宜） | R0 | I | P0-5 | **v1** | extended | 新增 |
+| `element.get` | 用稳定句柄取属性快照 | R0 | I | P0-5 | **v1** | extended | `element.get` |
+| `element.tree` | 子树快照 / diff（`since`） | R0 | I | P0-5 | **v1** | **core** | `element.tree` |
+| `element.property.get` | 读指定属性 | R0 | I | P0-5 | **v1** | extended | `element.get` |
+| `element.wait` | 等待元素状态 | R0 | I | P0-9 | **v1** | extended | `element.wait` |
+| `element.invoke` | **UIA InvokePattern（首选，可绕 UIPI）** | R1–R3 | C | P0-6 | **v1** | **core** | `element.invoke` |
+| `element.set_value` | UIA ValuePattern 设值 | R1–R3 | C | P0-6 | **v1** | **core** | `text.set`(strategy=valuePattern) |
+| `element.set_range_value` | 滑块/数值/进度 | R1 | C | — | **v1.5** | future | 新增 |
+| `element.toggle` | 勾选/开关 | R1 | C | P0-6 | **v1** | **core** | `element.invoke`(action=toggle) |
+| `element.select` | 列表/树/标签选择 | R1 | C | P0-6 | **v1** | extended | `element.invoke`(action=select) |
+| `element.expand_collapse` | 树/组合框展开收起 | R1 | C | P0-6 | **v1** | extended | `element.invoke`(action=expand) |
+| `element.scroll` | 滚动 / 滚动到可见 | R1 | C | P0-6 | **v1** | **core** | `element.scroll` |
+| `element.focus` | 设置键盘焦点 | R1 | I | P0-6 | **v1** | extended | `element.focus` |
+| `element.text.get` | 读文本（TextPattern） | R0 | I | P0-5 | **v1** | **core** | `text.readback` |
+| `element.caret.get` | 读字符级光标位置 | R1 | C | — | **v1.5** | future | 新增（OSWorld-G 列为精细操作） |
+| `element.caret.set` | 设字符级光标位置 | R1 | C | — | **v1.5** | future | 新增 |
+| `element.selection.get` | 读文本选区 | R1 | C | — | **v1** | extended | `text.selection`(get) |
+| `element.selection.set` | 设文本选区 | R1 | C | — | **v1** | extended | `text.selection`(set) |
+| `element.rect` | 几何矩形 | R0 | I | P0-5 | **v1** | extended | `element.get.rect` |
+| `element.center` | 中心点 | R0 | I | P0-5 | **v1** | extended | `mouse.click`(elementId) |
+| `element.highlight` | 调试高亮 | R0 | I | P0-12 | **v1** | extended | `element.highlight` |
+| `element.exists` | 是否存在 | R0 | I | P0-9 | **v1** | extended | 新增 |
 
 #### 0.7.5 `mouse.*`（8 条）+ `keyboard.*`（9 条）
 
-| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | 07 技术条目 |
-|---|---|---|---|---|---|---|
-| `mouse.position.get` | 当前光标位置 | R0 | I | P0-6 | **v1** | `mouse.position` |
-| `mouse.move` | 移动（绝对/相对/smooth） | R1 | I | P0-6 | **v1** | `mouse.move` |
-| `mouse.click` | 点击 | R1–R3 | N | P0-6 | **v1** | `mouse.click` |
-| `mouse.down` | 按下 | R1 | N | P0-6 | **v1** | `mouse.drag` 首段 |
-| `mouse.up` | 释放 | R1 | N | P0-6 | **v1** | `mouse.drag` 尾段 |
-| `mouse.drag` | 拖拽 | R1–R3 | N | P0-6 | **v1** | `mouse.drag` |
-| `mouse.scroll` | 滚轮（lines/pixels） | R1 | C | P0-6 | **v1** | `mouse.wheel` |
-| `mouse.hover` | 悬停（含 tooltip 等待） | R0/R1 | I | — | **v1.5** | 新增 |
-| `keyboard.type` | **Unicode 直注（KEYEVENTF_UNICODE，绕过 IME）** | R1–R3 | N | P0-7 | **v1** | `text.set`/`text.append` |
-| `keyboard.press` | 单键 | R1–R3 | N | P0-7 | **v1** | `keyboard.press` |
-| `keyboard.hotkey` | 组合键 | R1–R3 | N | P0-7 | **v1** | `keyboard.press`(modifiers) |
-| `keyboard.down` | 按下保持 | R1 | N | P0-7 | **v1** | `keyboard.hold` |
-| `keyboard.up` | 释放 | R1 | N | P0-7 | **v1** | `keyboard.release` |
-| `keyboard.type_pinyin` | **走 IME 的真实中文输入**（测试/特殊场景） | R2 | N | — | **v2** | `text.typeByKeystroke`（中文场景**禁用**） |
-| `keyboard.ime.status` | IME 状态（输入法/中英/是否组字/候选可见） | R0 | I | P0-7 | **v1** | `system.imeState` |
-| `keyboard.ime.set` | 切换中/英或输入法（**自动记录并恢复**） | R1 | C | — | **v1.5** | 07 明确不提供 → **依 02 口径补回，但默认禁用** |
-| `keyboard.ime.candidates` | 读候选词 | R0 | I | — | **v2** | 新增（UIA 覆盖不稳，标 ⚠️） |
+| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | **tier** | 07 技术条目 |
+|---|---|---|---|---|---|---|---|
+| `mouse.position.get` | 当前光标位置 | R0 | I | P0-6 | **v1** | extended | `mouse.position` |
+| `mouse.move` | 移动（绝对/相对/smooth） | R1 | I | P0-6 | **v1** | **core** | `mouse.move` |
+| `mouse.click` | 点击 | R1–R3 | N | P0-6 | **v1** | **core** | `mouse.click` |
+| `mouse.down` | 按下 | R1 | N | P0-6 | **v1** | extended | `mouse.drag` 首段 |
+| `mouse.up` | 释放 | R1 | N | P0-6 | **v1** | extended | `mouse.drag` 尾段 |
+| `mouse.drag` | 拖拽 | R1–R3 | N | P0-6 | **v1** | advanced | `mouse.drag` |
+| `mouse.scroll` | 滚轮（lines/pixels） | R1 | C | P0-6 | **v1** | **core** | `mouse.wheel` |
+| `mouse.hover` | 悬停（含 tooltip 等待） | R0/R1 | I | — | **v1.5** | future | 新增 |
+| `keyboard.type` | **Unicode 直注（KEYEVENTF_UNICODE，绕过 IME）** | R1–R3 | N | P0-7 | **v1** | **core** | `text.set`/`text.append` |
+| `keyboard.press` | 单键 | R1–R3 | N | P0-7 | **v1** | **core** | `keyboard.press` |
+| `keyboard.hotkey` | 组合键 | R1–R3 | N | P0-7 | **v1** | **core** | `keyboard.press`(modifiers) |
+| `keyboard.down` | 按下保持 | R1 | N | P0-7 | **v1** | extended | `keyboard.hold` |
+| `keyboard.up` | 释放 | R1 | N | P0-7 | **v1** | extended | `keyboard.release` |
+| `keyboard.type_pinyin` | **走 IME 的真实中文输入**（测试/特殊场景） | R2 | N | — | **v2** | future | `text.typeByKeystroke`（中文场景**禁用**） |
+| `keyboard.ime.status` | IME 状态（输入法/中英/是否组字/候选可见） | R0 | I | P0-7 | **v1** | extended | `system.imeState` |
+| `keyboard.ime.set` | 切换中/英或输入法（**自动记录并恢复**） | R1 | C | — | **v1.5** | future | 07 明确不提供 → **依 02 口径补回，但默认禁用** |
+| `keyboard.ime.candidates` | 读候选词 | R0 | I | — | **v2** | future | 新增（UIA 覆盖不稳，标 ⚠️） |
 
 #### 0.7.6 `clipboard.*`（5 条）· `screen.*`/`ocr.*`（6 条）
 
-| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | 07 技术条目 |
-|---|---|---|---|---|---|---|
-| `clipboard.get` | 读剪贴板 | R0 | I | P0-18 | **v1** | `clipboard.get` |
-| `clipboard.set` | 写剪贴板（**默认记录并恢复**） | R1 | C | P0-18 | **v1** | `clipboard.set` + `clipboard.save/restore` |
-| `clipboard.formats` | 可用格式列表 | R0 | I | P0-18 | **v1** | 新增 |
-| `clipboard.clear` | 清空 | R1 | I | — | **v1** | 新增 |
-| `clipboard.history` | Win+V 历史 | R0 | I | — | **v2（⚠️需 PoC）** | 新增 |
-| `screen.capture` | 截图（**默认只返标注元数据，不含图像**） | R0 | I | P1-2 | **v1** | `screen.capture` |
-| `screen.annotate` | SoM 标注（编号→元素映射） | R0 | I | P1-2 | **v1** | `vision.annotate` |
-| `screen.diff` | 两快照差异区域 | R0 | I | P1-1 | **v1.5** | `screen.diff` |
-| `screen.locate` | 模板匹配定位（OpenCV） | R0 | I | P2-4 | **v2** | `vision.locate` |
-| `screen.pixel` | 取色 | R0 | I | — | **v2** | 新增 |
-| `ocr.recognize` | 区域 OCR（中英） | R0 | I | P1-2 | **v1.5** | `vision.ocr` |
+| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | **tier** | 07 技术条目 |
+|---|---|---|---|---|---|---|---|
+| `clipboard.get` | 读剪贴板 | R0 | I | P0-18 | **v1** | **core** | `clipboard.get` |
+| `clipboard.set` | 写剪贴板（**默认记录并恢复**） | R1 | C | P0-18 | **v1** | **core** | `clipboard.set` + `clipboard.save/restore` |
+| `clipboard.formats` | 可用格式列表 | R0 | I | P0-18 | **v1** | extended | 新增 |
+| `clipboard.clear` | 清空 | R1 | I | — | **v1** | extended | 新增 |
+| `clipboard.history` | Win+V 历史 | R0 | I | — | **v2（⚠️需 PoC）** | future | 新增 |
+| `screen.capture` | 截图（**默认只返标注元数据，不含图像**） | R0 | I | P1-2 | **v1** | **core** | `screen.capture` |
+| `screen.annotate` | SoM 标注（编号→元素映射） | R0 | I | P1-2 | **v1** | **core** | `vision.annotate` |
+| `screen.diff` | 两快照差异区域 | R0 | I | P1-1 | **v1.5** | future | `screen.diff` |
+| `screen.locate` | 模板匹配定位（OpenCV） | R0 | I | P2-4 | **v2** | future | `vision.locate` |
+| `screen.pixel` | 取色 | R0 | I | — | **v2** | future | 新增 |
+| `ocr.recognize` | 区域 OCR（中英） | R0 | I | P1-2 | **v1** | **core** | `vision.ocr` |
 
 #### 0.7.7 `file.*`（18 条）
 
-| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | 07 技术条目 |
-|---|---|---|---|---|---|---|
-| `file.list` | 列目录 | R0 | I | P0-16 | **v1** | `file.list` |
-| `file.stat` | 元信息（**P17 主要验证手段**） | R0 | I | P0-16 | **v1** | 新增（**重要**：独立验证主力） |
-| `file.exists` | 存在性 | R0 | I | P0-16 | **v1** | 新增 |
-| `file.read` | 读文件（含 GBK 编码） | R0 | I | P0-16 | **v1** | `file.read` |
-| `file.write` | 写文件（**事务内默认备份原内容**） | R2 | C | P0-16 | **v1** | `file.write` |
-| `file.copy` | 复制 | R2 | C | P0-16 | **v1** | `file.copy` |
-| `file.move` | 移动 | R2 | C | P0-16 | **v1** | `file.move` |
-| `file.rename` | 重命名 | R2 | C | — | **v1** | 新增 |
-| `file.delete` | 删除（**默认回收站**） | R2/R3 | C | P0-16 | **v1** | `file.delete` |
-| `file.mkdir` | 建目录 | R2 | C | P0-16 | **v1** | 新增 |
-| `file.rmdir` | 删目录 | R3 | C | — | **v1.5** | 新增 |
-| `file.watch` | 目录变更订阅 | R0 | I | — | **v2** | 新增 |
-| `file.archive` | 压缩 | R2 | C | P2-6 | **v2** | 新增 |
-| `file.unarchive` | 解压 | R2 | C | P2-6 | **v2** | 新增 |
-| `file.recycle.list` | 回收站列表 | R2 | C | P2-6 | **v2** | 新增 |
-| `file.recycle.restore` | 回收站还原 | R2 | C | P2-6 | **v2** | 新增 |
-| `file.recycle.empty` | 清空回收站 | R3 | C | — | **v2（默认拒绝）** | 新增 |
-| `file.wait_stable` | 等待文件大小稳定（下载完成判定） | R0 | I | — | **v1.5** | 新增 |
+| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | **tier** | 07 技术条目 |
+|---|---|---|---|---|---|---|---|
+| `file.list` | 列目录 | R0 | I | P0-16 | **v1** | **core** | `file.list` |
+| `file.stat` | 元信息（**P17 主要验证手段**） | R0 | I | P0-16 | **v1** | **core** | 新增（**重要**：独立验证主力） |
+| `file.exists` | 存在性 | R0 | I | P0-16 | **v1** | **core** | 新增 |
+| `file.read` | 读文件（含 GBK 编码） | R0 | I | P0-16 | **v1** | **core** | `file.read` |
+| `file.write` | 写文件（**事务内默认备份原内容**） | R2 | C | P0-16 | **v1** | **core** | `file.write` |
+| `file.copy` | 复制 | R2 | C | P0-16 | **v1** | **core** | `file.copy` |
+| `file.move` | 移动 | R2 | C | P0-16 | **v1** | **core** | `file.move` |
+| `file.rename` | 重命名 | R2 | C | — | **v1** | extended | 新增 |
+| `file.delete` | 删除（**默认回收站**） | R2/R3 | C | P0-16 | **v1** | advanced | `file.delete` |
+| `file.mkdir` | 建目录 | R2 | C | P0-16 | **v1** | **core** | 新增 |
+| `file.rmdir` | 删目录 | R3 | C | — | **v1.5** | future | 新增 |
+| `file.watch` | 目录变更订阅 | R0 | I | — | **v2** | future | 新增 |
+| `file.archive` | 压缩 | R2 | C | P2-6 | **v2** | future | 新增 |
+| `file.unarchive` | 解压 | R2 | C | P2-6 | **v2** | future | 新增 |
+| `file.recycle.list` | 回收站列表 | R2 | C | P2-6 | **v2** | future | 新增 |
+| `file.recycle.restore` | 回收站还原 | R2 | C | P2-6 | **v2** | future | 新增 |
+| `file.recycle.empty` | 清空回收站 | R3 | C | — | **v2（默认拒绝）** | future | 新增 |
+| `file.wait_stable` | 等待文件大小稳定（下载完成判定） | R0 | I | — | **v1.5** | future | 新增 |
 
 #### 0.7.8 `dialog.*` / `filedialog.*`（7 条）· `browser.*` / `shell.*` / `console.*`（17 条）
 
-| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | 07 技术条目 |
-|---|---|---|---|---|---|---|
-| `dialog.detect` | 检测模态阻断（UAC/文件对话框/消息框/应用模态） | R0 | I | P0-17 | **v1** | 新增（见 §17） |
-| `dialog.wait` | 等待对话框出现/消失 | R0 | I | P0-17 | **v1** | 新增 |
-| `dialog.dismiss` | 关闭（Esc/取消/X） | R1 | C | P0-17 | **v1** | 新增 |
-| `dialog.button.click` | 按名称点按钮（支持多语言别名+模糊） | R1–R3 | N | P0-17 | **v1** | 新增 |
-| `filedialog.set_path` | **设置文件路径（Windows 高频专化能力）** | R1 | C | P0-17 | **v1** | 新增 |
-| `filedialog.confirm` | 确认（含覆盖确认连环框处理） | R1–R3 | N | P0-17 | **v1** | 新增 |
-| `filedialog.cancel` | 取消 | R1 | N | P0-17 | **v1** | 新增 |
-| `browser.tabs.list` | 列标签页 | R0/R1 | I | P1-6 | **v1.5** | `browser.tabs` |
-| `browser.tabs.open` | 打开标签页 | R1 | N | P1-6 | **v1.5** | 新增 |
-| `browser.tabs.close` | 关闭标签页 | R2 | C | P1-6 | **v1.5** | 新增 |
-| `browser.tabs.switch` | 切换标签页 | R1 | C | P1-6 | **v1.5** | 新增 |
-| `browser.navigate` | 导航 | R1 | C | P1-6 | **v1.5** | `browser.navigate` |
-| `browser.cdp.attach` | **CDP 逃逸口**（需授权，可能要求带端口重启） | R2 | I | P1-6 | **v1.5** | `browser.attach` |
-| `browser.cdp.call` | 透传 CDP 命令 | R3 | N | P1-6 | **v1.5** | `browser.evaluate` 等泛化 |
-| `browser.dom.get` | DOM 快照（需授权） | R2 | I | P1-6 | **v1.5** | `browser.axTree` |
-| `shell.exec` | 同步执行命令（cmd/pwsh） | R3 | N | P1-5 | **v1** | `shell.exec` |
-| `shell.exec_async` | 异步执行 | R3 | N | P1-5 | **v1.5** | 新增 |
-| `shell.job.status` | 任务状态 | R1 | I | P1-5 | **v1.5** | 新增 |
-| `shell.job.read` | 读增量输出 | R1 | C | P1-5 | **v1.5** | 新增 |
-| `shell.job.cancel` | 取消任务 | R2 | C | P1-5 | **v1.5** | 新增 |
-| `console.attach` | 附加到交互式会话（ConPTY） | R1 | I | P1-5 | **v2（⚠️需 PoC）** | 新增（见 §18） |
-| `console.detach` | 分离 | R1 | I | P1-5 | **v2** | 新增 |
-| `console.read_buffer` | 读终端屏缓冲（**ConPTY 下仅视口，无 scrollback**） | R0 | I | P1-5 | **v2（⚠️需 PoC）** | 新增 |
-| `console.send` | 向交互 shell 发送输入 | R2/R3 | N | P1-5 | **v2** | 新增 |
+| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | **tier** | 07 技术条目 |
+|---|---|---|---|---|---|---|---|
+| `dialog.detect` | 检测模态阻断（UAC/文件对话框/消息框/应用模态） | R0 | I | P0-17 | **v1** | **core** | 新增（见 §17） |
+| `dialog.wait` | 等待对话框出现/消失 | R0 | I | P0-17 | **v1** | extended | 新增 |
+| `dialog.dismiss` | 关闭（Esc/取消/X） | R1 | C | P0-17 | **v1** | extended | 新增 |
+| `dialog.button.click` | 按名称点按钮（支持多语言别名+模糊） | R1–R3 | N | P0-17 | **v1** | **core** | 新增 |
+| `filedialog.set_path` | **设置文件路径（Windows 高频专化能力）** | R1 | C | P0-17 | **v1** | **core** | 新增 |
+| `filedialog.confirm` | 确认（含覆盖确认连环框处理） | R1–R3 | N | P0-17 | **v1** | **core** | 新增 |
+| `filedialog.cancel` | 取消 | R1 | N | P0-17 | **v1** | extended | 新增 |
+| `browser.tabs.list` | 列标签页 | R0/R1 | I | P1-6 | **v1.5** | future | `browser.tabs` |
+| `browser.tabs.open` | 打开标签页 | R1 | N | P1-6 | **v1.5** | future | 新增 |
+| `browser.tabs.close` | 关闭标签页 | R2 | C | P1-6 | **v1.5** | future | 新增 |
+| `browser.tabs.switch` | 切换标签页 | R1 | C | P1-6 | **v1.5** | future | 新增 |
+| `browser.navigate` | 导航 | R1 | C | P1-6 | **v1.5** | future | `browser.navigate` |
+| `browser.cdp.attach` | **CDP 逃逸口**（需授权，可能要求带端口重启） | R2 | I | P1-6 | **v1.5** | future | `browser.attach` |
+| `browser.cdp.call` | 透传 CDP 命令 | R3 | N | P1-6 | **v1.5** | future | `browser.evaluate` 等泛化 |
+| `browser.dom.get` | DOM 快照（需授权） | R2 | I | P1-6 | **v1.5** | future | `browser.axTree` |
+| `shell.exec` | 同步执行命令（cmd/pwsh） | R3 | N | P1-5 | **v1** | advanced | `shell.exec` |
+| `shell.exec_async` | 异步执行 | R3 | N | P1-5 | **v1.5** | future | 新增 |
+| `shell.job.status` | 任务状态 | R1 | I | P1-5 | **v1.5** | future | 新增 |
+| `shell.job.read` | 读增量输出 | R1 | C | P1-5 | **v1.5** | future | 新增 |
+| `shell.job.cancel` | 取消任务 | R2 | C | P1-5 | **v1.5** | future | 新增 |
+| `console.attach` | 附加到交互式会话（ConPTY） | R1 | I | P1-5 | **v2（⚠️需 PoC）** | future | 新增（见 §18） |
+| `console.detach` | 分离 | R1 | I | P1-5 | **v2** | future | 新增 |
+| `console.read_buffer` | 读终端屏缓冲（**ConPTY 下仅视口，无 scrollback**） | R0 | I | P1-5 | **v2（⚠️需 PoC）** | future | 新增 |
+| `console.send` | 向交互 shell 发送输入 | R2/R3 | N | P1-5 | **v2** | future | 新增 |
 
 #### 0.7.9 `registry.*` / `notify.*`（12 条）
 
-| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | 07 技术条目 |
-|---|---|---|---|---|---|---|
-| `registry.get` | **读注册表** | R0 | I | P1-13 | **v1** | 新增（**P0 补充项**） |
-| `registry.set` | 写注册表（**standard 模式下默认拒绝**） | R4 | C | P1-13 | **v2（默认禁用）** | 新增 |
-| `registry.delete` | 删注册表 | R4 | C | P1-13 | **v2（默认禁用）** | 新增 |
-| `toast.list` | Toast 列表 | R0 | I | P2-5 | **v2** | `system.notifications` |
-| `toast.dismiss` | 关闭 Toast | R1 | C | P2-5 | **v2** | 新增 |
-| `toast.click` | 点击 Toast | R1 | C | P2-5 | **v2（⚠️覆盖不稳）** | 新增 |
-| `tray.list` | 托盘图标列表（含溢出区） | R0 | I | P2-5 | **v2（⚠️见不支持 #10）** | 新增 |
-| `tray.click` | 点击托盘图标 | R1 | C | P2-5 | **v2（⚠️）** | 新增 |
-| `tray.context_menu` | 托盘右键菜单 | R1 | C | P2-5 | **v2（⚠️）** | 新增 |
-| `taskbar.list` | 任务栏列表 | R0 | I | P2-5 | **v2** | 新增 |
-| `taskbar.click` | 点击任务栏 | R1 | C | P2-5 | **v2** | 新增 |
-| `startmenu.search` | 开始菜单搜索并启动 | R1 | C | — | **v1.5** | `process.start`(AUMID) 子集 |
+| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | **tier** | 07 技术条目 |
+|---|---|---|---|---|---|---|---|
+| `registry.get` | **读注册表** | R0 | I | P1-13 | **v1** | advanced | 新增（**P0 补充项**） |
+| `registry.set` | 写注册表（**standard 模式下默认拒绝**） | R4 | C | P1-13 | **v2（默认禁用）** | future | 新增 |
+| `registry.delete` | 删注册表 | R4 | C | P1-13 | **v2（默认禁用）** | future | 新增 |
+| `toast.list` | Toast 列表 | R0 | I | P2-5 | **v2** | future | `system.notifications` |
+| `toast.dismiss` | 关闭 Toast | R1 | C | P2-5 | **v2** | future | 新增 |
+| `toast.click` | 点击 Toast | R1 | C | P2-5 | **v2（⚠️覆盖不稳）** | future | 新增 |
+| `tray.list` | 托盘图标列表（含溢出区） | R0 | I | P2-5 | **v2（⚠️见不支持 #10）** | future | 新增 |
+| `tray.click` | 点击托盘图标 | R1 | C | P2-5 | **v2（⚠️）** | future | 新增 |
+| `tray.context_menu` | 托盘右键菜单 | R1 | C | P2-5 | **v2（⚠️）** | future | 新增 |
+| `taskbar.list` | 任务栏列表 | R0 | I | P2-5 | **v2** | future | 新增 |
+| `taskbar.click` | 点击任务栏 | R1 | C | P2-5 | **v2** | future | 新增 |
+| `startmenu.search` | 开始菜单搜索并启动 | R1 | C | — | **v1.5** | future | `process.start`(AUMID) 子集 |
 
 #### 0.7.10 `macro.*` / `transaction.*` / `undo.*` / `audit.*`（14 条）· `wait.*`（4 条）
 
-| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | 07 技术条目 |
+| 权威 ID | 中文名 | 风险 | 幂等 | P级 | 归属 | **tier** | 07 技术条目 |
+|---|---|---|---|---|---|---|---|
+| `macro.list` | 发现内置与自定义宏 | R0 | I | P0-20 | **v1** | **core** | 新增（见 §20） |
+| `macro.describe` | 宏详情 + Schema | R0 | I | P0-20 | **v1** | extended | 新增 |
+| `macro.run` | 执行宏（含 items 批量 + on_error） | 视宏 | C/N | P0-20 | **v1** | **core** | 新增 |
+| `macro.record_start` | 开始录制演示 | R2 | N | P2-1 | **v1.5**（team-lead 裁定：record 做） | future | `session.record` |
+| `macro.record_stop` | 停止录制 | R2 | N | P2-1 | **v1.5** | future | `session.record`(stop) |
+| `macro.record_save` | 保存为宏定义 | R2 | N | P2-1 | **v1.5** | future | 新增 |
+| `transaction.begin` | 开启事务 | — | — | P1-3 | **v1.5** | future | 新增（见 §20） |
+| `transaction.commit` | 提交 | — | — | P1-3 | **v1.5** | future | 新增 |
+| `transaction.rollback` | 回滚（**部分回滚须报 ROLLBACK_PARTIAL**） | — | — | P1-3 | **v1.5** | future | 新增 |
+| `undo.stack` | 当前可撤销栈 | R0 | I | P1-3 | **v1.5** | future | 新增 |
+| `undo.undo` | 撤销 | R2 | C | P1-3 | **v1.5** | future | 新增 |
+| `undo.redo` | 重做 | R2 | C | P1-3 | **v2** | future | 新增 |
+| `audit.query` | 查询审计日志 | R0 | I | P0-15 | **v1** | extended | `session.log` |
+| `audit.export` | 导出审计 | R1 | I | P0-15 | **v1** | extended | `session.log`(export) |
+| `wait.for` | **统一条件等待**（元素/窗口/进程/文件/文本/剪贴板） | R0 | I | P0-9 | **v1** | **core** | 新增（见 §16） |
+| `wait.idle` | 空闲等待（input_idle / cpu_idle） | R0 | I | P0-9 | **v1** | **core** | 新增 |
+| `wait.stable` | 防抖稳定等待 | R0 | I | P0-9 | **v1** | extended | `screen.waitStable` 泛化 |
+| `wait.timeout` | 固定等待（**不推荐，审计中标记**） | R0 | I | — | **v1** | extended | 新增 |
+
+#### 0.7.11 `office.*`（5 行：`office.*` 4 条 + WPS 适配 1 行；team-lead 裁定：**v1 做 Excel / Word COM**）
+
+| 权威 ID | 中文名 | 风险 | 幂等 | 归属 | **tier** | 07 技术条目 |
 |---|---|---|---|---|---|---|
-| `macro.list` | 发现内置与自定义宏 | R0 | I | P0-20 | **v1** | 新增（见 §20） |
-| `macro.describe` | 宏详情 + Schema | R0 | I | P0-20 | **v1** | 新增 |
-| `macro.run` | 执行宏（含 items 批量 + on_error） | 视宏 | C/N | P0-20 | **v1** | 新增 |
-| `macro.record_start` | 开始录制演示 | R2 | N | P2-1 | **v1.5**（team-lead 裁定：record 做） | `session.record` |
-| `macro.record_stop` | 停止录制 | R2 | N | P2-1 | **v1.5** | `session.record`(stop) |
-| `macro.record_save` | 保存为宏定义 | R2 | N | P2-1 | **v1.5** | 新增 |
-| `transaction.begin` | 开启事务 | — | — | P1-3 | **v1.5** | 新增（见 §20） |
-| `transaction.commit` | 提交 | — | — | P1-3 | **v1.5** | 新增 |
-| `transaction.rollback` | 回滚（**部分回滚须报 ROLLBACK_PARTIAL**） | — | — | P1-3 | **v1.5** | 新增 |
-| `undo.stack` | 当前可撤销栈 | R0 | I | P1-3 | **v1.5** | 新增 |
-| `undo.undo` | 撤销 | R2 | C | P1-3 | **v1.5** | 新增 |
-| `undo.redo` | 重做 | R2 | C | P1-3 | **v2** | 新增 |
-| `audit.query` | 查询审计日志 | R0 | I | P0-15 | **v1** | `session.log` |
-| `audit.export` | 导出审计 | R1 | I | P0-15 | **v1** | `session.log`(export) |
-| `wait.for` | **统一条件等待**（元素/窗口/进程/文件/文本/剪贴板） | R0 | I | P0-9 | **v1** | 新增（见 §16） |
-| `wait.idle` | 空闲等待（input_idle / cpu_idle） | R0 | I | P0-9 | **v1** | 新增 |
-| `wait.stable` | 防抖稳定等待 | R0 | I | P0-9 | **v1** | `screen.waitStable` 泛化 |
-| `wait.timeout` | 固定等待（**不推荐，审计中标记**） | R0 | I | — | **v1** | 新增 |
+| `office.attach` | 连接 Office 应用 | R0 | I | **v1** | extended | `office.attach` |
+| `office.excel.range` | 读写 Excel 区域 | R0/R2 | C | **v1** | extended | `office.excel.range` |
+| `office.word.text` | 读写 Word 文本 | R0/R2 | C | **v1** | extended | `office.word.text` |
+| `office.outlook.send` | 撰写/发送邮件（`mode=draft` 默认） | R3/R4 | N | **v2** | future | `office.outlook.send` |
+| `office.wps.*`（WPS 适配） | WPS COM 兼容层 | — | — | **v1.5**（team-lead 裁定：WPS 降 v1.5） | future | 新增 |
 
-#### 0.7.11 `office.*`（4 条，team-lead 裁定：**v1 做 Excel / Word COM**）
+#### 0.7.12 切分统计（**已按实测行数更正**）
 
-| 权威 ID | 中文名 | 风险 | 幂等 | 归属 | 07 技术条目 |
-|---|---|---|---|---|---|
-| `office.attach` | 连接 Office 应用 | R0 | I | **v1** | `office.attach` |
-| `office.excel.range` | 读写 Excel 区域 | R0/R2 | C | **v1** | `office.excel.range` |
-| `office.word.text` | 读写 Word 文本 | R0/R2 | C | **v1** | `office.word.text` |
-| `office.outlook.send` | 撰写/发送邮件（`mode=draft` 默认） | R3/R4 | N | **v2** | `office.outlook.send` |
-| `office.wps.*`（WPS 适配） | WPS COM 兼容层 | — | — | **v1.5**（team-lead 裁定：WPS 降 v1.5） | 新增 |
+| 归属 | 条数（**实测行数**） | 旧稿值 | 说明 |
+|---|---|---|---|
+| **v1（MVP）** | **100** | ~~108~~ | 覆盖 PRD 全部 P0 + 少量 P1 主干（`shell.exec`、`screen.capture`、`file.stat` 等） |
+| **v1.5** | **38** | ~~33~~ | 覆盖 PRD P1 主体（事务/事件订阅/CDP/终端/Snap/虚拟桌面查询/宏录制） |
+| **v2** | **30** | ~~21~~ | 覆盖 PRD P2 + 明确脆弱能力（托盘/Toast/虚拟桌面切换/模板匹配/回收站/console） |
+| **合计** | **168** | ~~162~~ | 与 02 §5.14 自报的"~133"差异源于该表按行统计（大量 `a / b / c` 合并行），此处按能力逐个展开 |
 
-#### 0.7.12 切分统计
+> 🔴 **发现一处口径错误，已更正并上报**：§0.7.1–§0.7.11 的**实际表行数是 167 行（98 / 39 / 30）**，旧统计写的 **162（108 / 33 / 21）与实际行数对不上**。
+> 差异可完整对账：A-1~A-7 裁定返工时把 **13 条从 v1 挪出**（v1.5 +5、v2 +8），同时 A-4 裁定新增 **`office.*` 5 行**（v1 +3 / v1.5 +1 / v2 +1）；旧总数未随之更新。
+> 另注：**162 = 167 − 5**，即旧总数恰好等于"02 §5 展开口径"的条数，**未计入后加的 `office.*` 5 行** —— 这解释了总数差的来源，但不解释 v1 内部的 108 vs 98。
+>
+> **下游影响**：06 §3.1 的 `"total": 108`、08 §2.6 的"v1 有 108 个能力"等引用**已随本表同步改为 98**。
 
-| 归属 | 条数 | 说明 |
+#### 0.7.13 `tier` 列口径（**权威定义**）
+
+**四档取值**
+
+| tier | 条数 | 可见性 | 何时返回 |
+|---|---|---|---|
+| `core` | **46** | **默认可见**（`session.capabilities` 不带 `filter.tier` 即返回） | 覆盖 80–90% 真实任务的主干 |
+| `extended` | **48** | 需显式声明（`want_tiers:["extended"]`）或按 `filter:{tier,domain}` 按需拉取 | 中频 / 域专用 / 可由 core 能力替代的冗余项 |
+| `advanced` | **6** | 需显式声明，部分仍需授权 | 高危 / 破坏性 / 高危域 |
+| `future` | **68** | **不返回** | v1.5（38）+ v2（30）全部标 `future`，v1 不发 |
+
+**core 的圈定规则（逐条显式标注，无兜底规则）**
+
+1. **硬规则（team-lead 裁定，不得违反）**
+   - **R1**：core 不含 `shell.exec`
+   - **R2**：core 不含 `office.*`
+   - **R3**：core 不含 `transaction.*` / `audit.*`
+   - **R4**：core 不含 `registry.*` / `system.power.*`
+2. **软原则（在硬规则之上收窄）**
+   - **C0 往返不回归（最高优先级，team-lead 裁定）**：若某能力被剔出 core 后，完成同一目标所需的**调用次数 > 直接调用它**，则该能力**必须回到 core**。
+     **适用前提**：该目标属于**典型任务集合** = PRD P0 场景 ∪ PRD 目标用户用例（U1–U4）∪ Bench 冻结题 ∪ 02 §2 标 🔴 的场景。
+     目标**不在**该集合内的，维持 extended 并登记为「已知往返缺口」（见文末 C 类表），由 team-lead 逐条决定是否上调。理由：core 是**最小可用集**，不是"零摩擦集"。
+     **C0 复检结果**：初版 core 39 条经 C0 复检后，**4 条被放回 → core = 43**（`display.list`、`file.copy`、`file.move`、`file.mkdir`），逐条依据见文末「C0 复检表」。
+   - **C1 主循环覆盖**：「定位 → 观察 → 动作 → 验证」每一环都至少有一条代表
+   - **C2 高频跨应用**：不绑定特定应用或特定域
+   - **C3 风险以 R0–R2 为主**：R3 项仅当它是主循环**不可替代**的动作原语时才入 core（`element.invoke`、`element.set_value`、`mouse.click`、`keyboard.type/press/hotkey`、`dialog.button.click`、`filedialog.confirm`），其风险由**确认门 + 作用域焦点契约**控制，而不是靠"藏起来"
+   - **C4 破坏性/不可逆不入 core**：`file.delete`、`process.terminate`、`registry.*`、`system.setting.set`
+   - **C5 域专用不入 core**：`office.*`、`browser.*`、`shell.*`、`registry.*`、`tray.*`/`toast.*`/`taskbar.*`
+   - **C6 可被同域更通用能力替代的不入 core**（这一条剔掉的条目最多）
+   - **C7 协议闭环（PM 提出，我采纳）**：**若某能力缺失会让某个已声明的协议无法闭环，它必须入 core**。
+     判据与 C1–C6 不同类：C1–C6 谈的是**成本**（token、往返、工具选择准确率），C7 谈的是**正确性** —— 能力在不在默认可见集里，决定了协议能不能跑完。
+     **实例**：`session.resume`。06 §9.3 的 `resume_hint` 会告诉 Agent"调用 `session.resume` 带上 `resume_token`"，但 **function-calling Agent 只能调用已声明的 tools** —— 它不在 core 里，Agent 收到提示也调不了，`NEEDS_HUMAN` 挂起后就永远回不来，挂起-恢复协议是断的。
+     **⚠️ C7 的适用约束（team-lead 裁定，防止 C7 被滥用）**
+     - C7 **只能用于"协议/判定闭环"类**，**不得**用于"这个能力其实挺常用的"。**「常用」不是 C7 的理由** —— 常用属于 C0/C2 的成本论证范畴，走 C7 等于用一个正确性判据去偷渡一个成本结论。
+     - **每次使用 C7，必须在 07 里写明「缺了它哪条协议/判定跑不通」**，并给出可追溯的出处（06 章节号 / Bench 题号 / 02 场景号）。**写不出这一句的，不构成 C7，退回 C0–C6 判定。**
+     - 判定形态目前只有两种：**① 协议闭环**（某条已声明的握手/恢复/确认协议依赖该能力才能走完，如 `session.resume`）；**② 判定闭环**（某个 Bench 题或验收判据的成立与否，依赖该能力才能被观测，如 `process.list`）。新增形态须经 team-lead 裁定。
+     - **C7 已使用记录（全表仅 2 处）**：`session.resume`（①协议闭环：06 §9.3 `resume_hint` → `session.resume` 的挂起-恢复握手）、`process.list`（②判定闭环：**Bench T25**，详见下方更正说明与 C0 复检表 B 类）。
+     - 🔴 **一次自我更正（记录在此，作为 C7 越界的实例）**：我在初稿里把 `process.list` 的 C7 依据写成"Bench **T17 / T25**"。**T17 那条是错的，已删除**。核对 10 §3 的 T17 🟢 判定列：T17 判的是「审计日志中是否出现 `NOT_AUTOMATABLE` / `NEEDS_HUMAN(reason=UAC_OPEN)`，**或**动作层撞上 `SECURE_DESKTOP`」——**整个判定不经过 `process.list`**。把它算作 `process.list` 的依据，正是本条款要防的那类越界：拿一条**看起来相关**（UAC 涉及权限、进程有 IL 字段）的题去给一个正确性判据背书。**C7 唯一的 T25 依据就足够**，不需要凑第二条。
+
+**core 46 条逐条清单（显式列出，不靠兜底规则推导）**
+
+| 域 | core 条目 |
+|---|---|
+| `session`（4） | `session.hello`、`session.capabilities`、`session.preflight`、**`session.resume`** |
+| `system`+`display`（2） | `system.info`、`display.list` |
+| `process`（2） | `process.start`、**`process.list`**（C7②判定闭环：Bench **T25**；⚠️ 非 T17） |
+| `window`（4） | `window.list`、`window.find`、`window.focus`、`window.close` |
+| `element`（7） | `element.find`、`element.tree`、`element.text.get`、`element.invoke`、`element.set_value`、`element.toggle`、`element.scroll` |
+| `mouse`（3） | `mouse.move`、`mouse.click`、`mouse.scroll` |
+| `keyboard`（3） | `keyboard.type`、`keyboard.press`、`keyboard.hotkey` |
+| `clipboard`（2） | `clipboard.get`、`clipboard.set` |
+| `screen`（2） | `screen.capture`、`screen.annotate` |
+| `ocr`（1） | **`ocr.recognize`**（A-17 裁定：由 v1.5 提前到 v1） |
+| `file`（8） | `file.list`、`file.stat`、`file.exists`、`file.read`、`file.write`、**`file.copy`、`file.move`（含重命名）、`file.mkdir`** |
+| `dialog`（2） | `dialog.detect`、`dialog.button.click` |
+| `filedialog`（2） | `filedialog.set_path`、`filedialog.confirm` |
+| `wait`（2） | `wait.for`、`wait.idle` |
+| `macro`（2） | `macro.list`、`macro.run` |
+
+> 加粗的三条是 C0 复检后**放回**的（初版被 C6 剔除，复检证明 core 下无 ≤1 次调用的等价路径）。
+> `ocr.recognize` 是 **A-17 裁定**后从 v1.5 提前到 v1 并直接入 core 的（理由见下方 C0 复检表与 §0.7.14）。
+> `session.resume` 是 PM 按命名权威口径补进 02 §5.1 后同步进来的；**它必须入 core**：06 §9.3 的 `resume_hint` 会告诉 Agent"调用 `session.resume`"，但 function-calling Agent **只能调用已声明的 tools** —— 不在默认可见集里，Agent 即使收到了提示也调不了，挂起-恢复协议就是断的。
+> `process.list` 是 **C0 复检后由 team-lead 按 C7②判定闭环裁定放回**的（core 45 → **46**）。理由**不是"常用"**，也**不是**"无窗口进程查不到"那一条（那是 C 类登记的成本论证）：真正的依据是 **Bench T25 的判据字面依赖它**（10 §3 T25 🟢 判定列 = `process.list` 含 `CalculatorApp.exe`），且 T25 **在 G1② 冻结清单内**。无窗口进程不可查是**附带收益**，不是裁定理由 —— 这两者必须分清，否则下次任何"不可查"的能力都能套 C7 进 core。
+
+**advanced 6 条（显式列出）**：`system.power`（R4 域，与 `system.power.act` 同命名空间）｜`process.terminate`（R2 破坏性）｜`mouse.drag`（R1–R3）｜`file.delete`（R2/R3 破坏性，默认回收站）｜`shell.exec`（R3，**R1**）｜`registry.get`（R0 读，但属 **R4** 高危域）
+
+**C0 复检表（逐条验证"core 替代路径的调用次数 ≤ 直接调用"）**
+
+> **验证方法**：不靠印象，逐条查 07 的 `params`/`returns` 定义，给出可追溯的章节号。三类结论：
+> **A** = core 有 ≤1 次调用的等价路径（剔除成立）｜**B** = 无 ≤1 次等价路径 **且**目标在典型任务集合内（**放回 core**）｜**C** = 无 ≤1 次等价路径，但目标不在典型任务集合内（维持 extended，登记为已知往返缺口）。
+
+| 被 C6 剔除的条目 | 类 | core 等价路径与依据 | 调用数 |
+|---|---|---|---|
+| `element.rect`、`element.center` | **A** | `element.find` returns 含 `rect: Rect`（§2.1）；center 由 rect 客户端算术得出 | 0 额外 |
+| `element.exists`、`element.count` | **A** | `element.find` returns 含 `totalCount`（§2.1） | 1 = 1 |
+| `element.select`、`element.toggle`、`element.expand_collapse`、`element.focus`、`element.scroll`(scrollIntoView) | **A** | `element.invoke{action:"select"\|"toggle"\|"expand"\|"collapse"\|"setFocus"\|"scrollIntoView"}`（§2.5） | 1 = 1 |
+| `element.get`、`element.property.get` | **A** | `element.find` 已返 name/controlType/automationId/className/frameworkId/rect/patterns（§2.1）；读值走 `element.text.get` | 1 = 1 |
+| `element.highlight` | **A** | 调试用，非任务目标 | — |
+| `element.selection.get` / `.set` | **A** | 02 §2 S4 明确把 `keyboard.hotkey`（Ctrl+A / Shift+方向键）列为同等替代手段 | 1 = 1（任意区间见 C 类登记） |
+| `window.state.get` | **A** | `window.list` returns 含 `state`（§1.1） | 0 额外 |
+| `window.tree` / `window.capture` / `window.wait` | **A** | `element.tree{scope}`（§2.3）／`screen.capture{target: WindowRef}`（§6.1）／`wait.for{condition:"window"}`（§16.1） | 1 = 1 |
+| `process.wait`、`dialog.wait`、`file.wait_stable` | **A** | `wait.for` condition 判别联合覆盖 `process` / `dialog` / `file`（§16.1） | 1 = 1 |
+| `system.idle` | **A** | `wait.idle`（§16.2） | 1 = 1 |
+| `mouse.position.get`、`mouse.down`、`mouse.up`、`keyboard.down`/`up`、`clipboard.formats`/`clear`、`session.status`/`set_mode`、`macro.describe`、`wait.stable`/`timeout`、`filedialog.cancel`、`dialog.dismiss` | **A** | 低频/诊断/运维类，或由已入 core 的能力 1 次覆盖 | ≤1 |
+| `audit.query` / `audit.export` | **A** | **R3 硬规则**；审计面向运维而非任务主循环 | — |
+| `file.delete` | **A** | **C4 破坏性硬规则优先**（R2/R3，默认回收站）→ 归 advanced | — |
+| **`display.list`** | **B** | ❌ 不成立。`window.list` 的 per-window `dpi`/`monitorId` 确实存在（§1.1），但 **`monitorSnapshot` 结构未定义** → 无法判定"哪个是主显示器 / 各屏缩放"。**Bench T28（冻结题）要求"主显示器缩放比例"**。另：**没有任何窗口的显示器**在 `window.list` 中根本不出现 | **放回** |
+| **`file.move`（含重命名）** | **B** | ❌ 不成立。core 下改只能走 Explorer GUI（focus → find → F2 → type → Enter）≈5 次；`macro.run` 内置宏集只有 `open_app_and_wait`/`save_file_as`/`fill_form`/`close_all_dialogs`/`wait_ready`（§20.2），无文件整理宏。**Bench T19（批量重命名 20 文件）+ PRD U4「整理文件」** | **放回** |
+| **`file.mkdir`** | **B** | ❌ 不成立。02 §2 S3 明确"GUI 模拟会进入重命名编辑态，名称输入框是**临时控件**"→ 替代路径脆弱且 >1 次。**PRD U4「整理文件」** | **放回** |
+| **`file.copy`** | **B** | ❌ 不成立。同 `file.move`，Explorer GUI 路径 ≈6 次。**PRD U4「整理文件」** | **放回** |
+| `file.rename` | **A** | 与 `file.move`（§10.5 标题即"移动 / 重命名"）**功能重复** → 维持 extended；⚠️ **建议与 `file.move` 合并**，但命名权威是 02 §5，不擅自删 ID，仅登记 | 1 = 1 |
+| `window.minimize/maximize/restore` | **C** | core 下 = `window.focus` + `keyboard.hotkey(Win+↑/↓)` = **2 次**；02 §2 S2 注"某些自绘标题栏应用不响应标准消息"。**02 S2 标 🟡、Bench 无必测题** → 维持 extended | 2 > 1 ⚠️ |
+| `window.move/resize/set_rect` | **C** | core 下只有贴靠快捷键（非任意 rect）或 `mouse.drag`（advanced）→ 无 1 次等价。**Bench T23/T24 为条件性题且走 v1.5 `window.send_to_monitor`** → 维持 extended | >1 ⚠️ |
+| `element.selection.set`（**任意区间**） | **C** | `keyboard.hotkey` 覆盖"全选"（1 次），任意区间需 Shift+方向键 × n → n 次。**02 S4 标 🟡、Bench 无题** → 维持 extended | n > 1 ⚠️ |
+| **`process.list`** | **B** | ❌ 不成立（**team-lead 裁定：放回 core，依据 C7②判定闭环**）。`window.list` 含 `pid`/`processName`（§1.1）→ **有窗口**进程 0 额外成本，这一半成立；但**判定闭环断裂**：**Bench T25「UWP 应用启动与等待就绪」（10 §3）的 🟢 判定列字面就是 `process.list` 含 `CalculatorApp.exe` + UIA 断言**，且 T25 在 G1② 冻结清单 **X 组**内（10 §6.5.1）—— **缺了它该题没有判据**。理由**不是"它常用"**，是判定闭环。⚠️ **T17 不构成依据**（判定走审计日志，不经 `process.list`，见 C7 约束下的自我更正）；**"无窗口进程不可查"是附带收益，不是裁定理由** | ∞ ⚠️ **→ core** |
+| `mouse.drag` | **C** | 拖拽在 core 下**完全不可达**（`mouse.drag` 在 advanced）。**Bench T24 为条件性题（需双屏）** → 维持 advanced | ∞ ⚠️ |
+| **`ocr.recognize`** | **B** | ❌ 不成立（**原先根本不在 v1**）。自绘 UI（微信/企微/钉钉/飞书）无 UIA 文本通道，OCR 是**唯一**读取路径；对非多模态 Agent，core 下等价路径 = `screen.capture{include_image:true}` + 模型视觉 —— **仅在模型多模态时成立**，不构成协议级等价。**02 §2 S14 国民级应用 🔴 + PRD L3 + Bench Z 组** → **提前到 v1 并入 core** | ∞ ⚠️ |
+| `keyboard.ime.status` | **A** | 【实】C4：8/8 真实窗口 `ImmGetContext` 返回 NULL → **该能力已知读不到值**。把已知不可靠的能力放进 core 会诱导 Agent 调用并得到假值（Bench 记 `false_claim`），故**维持 extended 是正确选择**。Bench T28 第三项已按裁定 D8 改判"如实上报不可得"，不需要调用它 | — |
+
+> **⚠️ C 类 = 4 行 / 涉及 8 条能力（team-lead 已逐条裁定完毕）**：`window.minimize/maximize/restore`（3，**维持 extended**）、`window.move/resize/set_rect`（3，**维持 extended**）、`element.selection.set` 任意区间（1，**维持 extended**）、`mouse.drag`（1，**维持 advanced**）。
+> `process.list` 原属 C 类，**已按 C7②判定闭环裁定放回 core**。
+> **裁定的附带义务**：上述 7 条（`window` 布局类 6 条 + `element.selection.set` 任意区间）**必须**在 08 SKILL.md 的「按需展开提示」里显式列出，写明 **core 等价路径 / 往返次数 / 失效条件** —— 否则 Agent 在 core 下遇到这些目标时会静默走错路，而 static 的 tier 表救不了它。
+
+#### 0.7.14 A-17 裁定：`ocr.recognize` 提前到 v1（**理由与代价**）
+
+**裁定**：`ocr.recognize` 由 **v1.5 → v1**，且 tier = **core**。随之 v1 = 99、v1.5 = 38、core = 44。
+
+**为什么原先把 `ocr.recognize` 归到 v1.5 —— 这是一次混淆，不是技术判断**：
+
+| 事实 | 出处 | 说明 |
 |---|---|---|
-| **v1（MVP）** | **108** | 覆盖 PRD 全部 P0 + 少量 P1 主干（`shell.exec`、`screen.capture`、`file.stat` 等） |
-| **v1.5** | **33** | 覆盖 PRD P1 主体（事务/事件订阅/CDP/终端/Snap/虚拟桌面查询/宏录制） |
-| **v2** | **21** | 覆盖 PRD P2 + 明确脆弱能力（托盘/Toast/虚拟桌面切换/模板匹配/回收站/console） |
-| **合计** | **162** | 与 02 §5.14 自报的"~133"差异源于该表按行统计（大量 `a / b / c` 合并行），此处按能力逐个展开 |
+| ADR-008 已选定 `Windows.Media.Ocr` 为 **v1 默认内置 OCR** | 05 ADR-008「v1 处置 ✅ 默认内置」 | 引擎层本来就判给了 v1 |
+| 归 v1.5 的是**重引擎插件** PaddleOCR / RapidOCR | 05 §12「协议就绪，**v1.5 提供**」 | 这是**引擎**，不是 `ocr.recognize` 能力 |
+| ADR-003 排除的是 **AGPL 权重的视觉模型（OmniParser）** | 05 ADR-003 | 与系统 OCR 是两件事 |
 
-> **给 PM 的提醒**：v1 就 108 个能力，**远超 LLM 单次能消费的工具数**。因此 PRD §6.1 的"渐进式发现"（`filter` + 分页）不是优化项而是**必需项**；同时建议 v1 默认只向 Agent 暴露**约 30–40 个"核心子集"**（见 06 协议规范的 `tier: core|extended|advanced` 字段设计）。
+→ **把"重引擎 v1.5 提供"误当成了"`ocr.recognize` v1.5"**，于是能力被连带推后。ADR-008 是对的，是本表的 `归属` 列错了。
+
+**是否存在硬技术原因阻止提前？逐条排除**：
+
+| 可能的阻因 | 结论 | 依据 |
+|---|---|---|
+| WinRT 与 trimming 冲突 | **不成立** | 若它成立，`screen.capture`（WGC，同为 WinRT 投影）也必须移出 v1 —— 而它现在是 **core**。同一风险不能只用来挡 OCR。且 A-7 已批准"单目录发布"降级预案，05 §10.3 的 trimming 冒烟清单第 ② 项本来就包含 `Windows.Media.Ocr`，说明它已在计划内 |
+| 需额外模型文件 / 联网 | **不成立** | 系统自带、离线、体积增量 **0**（ADR-008） |
+| 许可合规 | **不成立** | 系统 API，无 AGPL 问题；ADR-003 挡的是 OmniParser |
+| 中文准确率不达标 | **部分成立，但不是"不做"的理由** | 【实】印刷体约 75–85%；【推】12/14px 小字 <60%、手写 >40%，**PoC 未跑**。→ 处理方式是把准确率**写进能力描述与 `confidence` 字段**，而不是把能力藏起来（见下方代价） |
+| 依赖系统 OCR 语言包 | **部分成立，已有机制** | ADR-008 已要求 `session.preflight` 检查语言包；07 §7.1 已有 `OCR_LANGUAGE_PACK_MISSING` 错误码并要求"明确提示用户安装，不要静默返回空" |
+
+**代价与前置条件（必须一并落地，否则等于虚假承诺）**
+
+1. **`PoC-P1-OCR` 升级为 P0 阻塞项**：真实桌面截图样本集 ≥100 张，测中文分档阈值并写进能力描述。**在此之前不得声称"v1 自绘 UI 可控"**。
+2. `ocr.recognize` 的 `description` **必须写明"仅当 UIA / TextPattern 无文本通道时使用（自绘 UI、游戏、远程桌面 canvas）；UIA 可读时不要用"** —— 否则默认暴露会诱导 Agent 用慢且不准确的通道替代 UIA（06 §3.3 的硬性要求）。
+3. 结果**必须带 `confidence` + `engine`**，低置信度时 `grounding.confidence = low`；OCR 文本一律标 `untrusted: true`（提示注入防护，06 §13）。
+4. `session.preflight` 必须把"OCR 语言包是否可用"列为检查项。
+
+> **对 PM 的直接影响**：03 §局限 L3「v1 无 OCR 通道」**可以撤掉**；Bench Z 组 4 题（T03/T08/T09/T10）与 T30 的"非 v1 依赖"标注**可以解除**。但**在 `PoC-P0-OCR` 出结果前，Z 组仍应保持"不设通过率目标、只观测降级路径是否被正确触发"** —— 因为准确率未实测。
+
+> **给 PM 的提醒**：v1 的能力条数（见 §0.7.12 实测表行）仍**远超 LLM 单次能消费的工具数**。因此 PRD §6.1 的"渐进式发现"（`filter` + 分页）不是优化项而是**必需项**；v1 默认只向 Agent 暴露 **core 子集**（条数见 §0.7.13，见 06 §3.2 与 08 §2.6）。
 
 ---
 
@@ -368,6 +513,11 @@ graph BT
 **errors**：`SESSION_NOT_INTERACTIVE`
 
 **precondition**：会话可交互
+
+> ⭐ **`monitorSnapshot` 结构补齐（原文只写 `[...]`，是规范缺口）**：
+> `monitorSnapshot: [{monitorId: string, bounds: Rect（VSC 物理像素）, workArea: Rect, primary: bool, dpi: int, scalePercent: int, orientation: "landscape"|"portrait"|"landscapeFlipped"|"portraitFlipped"}]`
+> **补齐理由**：① 07 §0.7.13 的 C0 复检原本想用"window.list 随附 monitorSnapshot"证明 `display.list` 可剔除，但**未定义的结构不能当作证据**；② Bench T28 要"主显示器缩放比例"，必须有 `primary` + `scalePercent`；③ 06 §5 的 VSC 坐标系换算依赖 `bounds` / `dpi`。
+> **注意**：`monitorSnapshot` **只列有窗口的显示器** —— 枚举全部显示器（含空屏）仍须 `display.list`。这正是 `display.list` 放回 core 的理由之一（见 §0.7.13 C0 复检表 B 类）。
 
 ---
 
@@ -1381,6 +1531,21 @@ graph BT
 ---
 
 ## 10. `file` — 文件域
+
+> **🔴 `verify` 的语义与硬边界（team-lead 采纳，PM 加严后定稿；与 06 §9.2 `VERIFY_FAILED` 覆盖条款同源）**
+>
+> 1. **写操作默认带校验**：`file.write` / `file.copy` / `file.move` 的 `verify` **默认 `true`**。校验方式 = **回读比对**，不是 `file.stat`。
+>    `file.stat` 只能证明"文件存在且大小变了"，**证明不了写进去的内容是对的** —— 那正是静默失败藏身的地方。
+> 2. **回读比对的具体内容**：**长度 + 内容哈希**（对 `file.write` 比对 `content` 的字节长度与哈希；对 `file.copy`/`file.move` 比对待写入来源的字节长度与哈希）。比对不一致 → `VERIFY_FAILED`（见 06 §9.2）。
+> 3. **硬边界（必须写进 07，不得在实现或文档里被越过）**：
+>    **`verify` 只覆盖「物理写入一致性」，不覆盖「编码正确性」。**
+>    - ✅ 覆盖：字节确实落盘、长度一致、哈希一致 —— 即"我让你写的东西，是不是原样写进去了"。
+>    - ❌ 不覆盖：调用方传的 `encoding` 是否是它真正想要的编码（UTF-8 / UTF-8 BOM / GBK / UTF-16LE 的**选择**是否正确）、BOM 该不该带、换行符该不该转换。
+>    - 理由：**编码正确性是一个语义层的意图问题，不是传输层的一致性问题**。实现端无法判断"调用方其实是想写 GBK 但传了 utf8"。把它塞进 `verify` 会让 `VERIFY_FAILED` 变成一个既报物理错又报语义错的混合信号，直接污染 10 §6.2 的 SFR-server 口径。
+>    - 编码问题**不是不管**：由 `file.write` 的 `encoding` 参数显式声明 + 返回值回显实际使用的编码，交由调用方/Agent 自行核对；不在 `verify` 通道里判定。
+> 4. **不传 `expect` 的写操作必须在审计中标记 `unverified: true`**（PM 要求）—— 见 06 §9.2 A2。缺了它，10 §6.2 的 SFR-server 分母里会混进"根本没校验"的样本，指标口径失真。
+
+---
 
 > **Windows 特殊约束**：路径需处理长路径（`\\?\` 前缀）、UNC、大小写不敏感、以及**受控文件夹访问（Controlled Folder Access）** 可能拦截写入。删除默认进回收站还是永久删除需明确。所有文件操作**必须走路径白名单**（默认仅允许用户目录 + 临时目录，其他需用户授权）。
 
