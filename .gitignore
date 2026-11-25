@@ -9,7 +9,7 @@ TestResults/
 # ---- PoC 构建产物与运行产物 ----
 poc/**/bin/
 poc/**/obj/
-# 运行日志与逐次结果（开发过程产物；基线快照 poc-results*.json / poc-run-multimon.log 保留入库）
+# 运行日志与结果（开发过程产物；含机器名/窗口标题等个人数据，仅本地保留，不入库）
 poc/poc-run.log
 poc/log_*.txt
 poc/l_*.txt
@@ -17,6 +17,8 @@ poc/notepad-diag.txt
 poc/r_*.json
 poc/result_*.json
 poc/poc-input-results.json
+poc/poc-results*.json
+poc/poc-run-multimon.log
 
 # ---- 本地工作区数据（含会话记忆，不入库）----
 .workbuddy/
