@@ -56,6 +56,19 @@ gantt
 | **M3 — 治理** | 风险分级、确认门、审计、事务、幂等 | R3 触发确认门；审计 100% 覆盖；幂等键可重放 |
 | **M4 — 生态** | CLI / MCP / SDK / Skill 包 / Bench | 新 Agent ≤30 分钟跑通 T01；Bench v1 27 题可跑 |
 
+### 1.1 当前进度（截至 2026-11-25）
+
+| 里程碑 | 状态 | 说明 |
+|---|---|---|
+| **M0 — PoC** | ✅ 完成 | 两轮实测，19 条结论（C1–C19），见 `12-poc-findings.md` |
+| **M0.5 — 协议骨架** | ✅ 完成 | 能力目录构建期生成（`build/gen_catalog.py` → `CapabilityCatalog.g.cs`）、`CapabilityDispatcher` 编排链路、core 全量注册；`CatalogCountTests` 断言 168 / 100-38-30 / 46-48-6-68 |
+| **M1 — 内核** | 🔄 进行中 | `Program.cs`（PMv2 声明置顶）、回环 HTTP host + Token 鉴权、`DpiAwareness`/`VirtualScreen`/`EnvironmentProbe`/`IntegrityLevelService` 已落地；UIA/输入/截图引擎文件已建 |
+| **M2 — 能力** | 🔄 进行中 | `session.*` / `system.info` / `display.list` 已实现；`element.*` / `mouse.*` / `keyboard.*` / `file.*` / `dialog.*` 文件已建 |
+| **M3 — 治理** | 🔄 早期 | `RiskClassifier` / `ApprovalGate` / `IdempotencyStore` / `AuditWriter` 已接入 Dispatcher 主链路 |
+| **M4 — 生态** | ⬜ 未开始 | MCP / SDK / Skill 包 / Bench / 签名 / 白名单提交均未启动 |
+
+`src/` 5 项目，`dotnet build` 0 警告 0 错误。
+
 ---
 
 ## 2. 项目目录结构

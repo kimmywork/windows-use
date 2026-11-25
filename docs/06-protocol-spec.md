@@ -7,7 +7,7 @@
 > **`tier` 权威源**：`tier: core|extended|advanced|future` 的**唯一权威源是 07 §0.7 的 `tier` 列**（口径见 07 §0.7.13）。本文档**不自带清单**，只定义协议行为。
 > **命名权威**：能力 ID 以 `07-capability-registry.md` §0.7 为准。
 > **可信度标注**：【实】已核实（附来源）｜【推】推断｜【PoC】待实测。沿用 04/05/07 的体系。
-> **实测基线**：本文档中标注【实】的 Windows 行为数据来自第一轮 PoC —— `poc/poc-results.json` ／ `poc/poc-run.log`；环境 **Windows 11 Build 26200（25H2）｜单显示器 1920×1080 @125%（120 DPI）｜探测进程 IL=Medium、未提权｜C#/.NET 10/FlaUI 5.0.0｜非侵入式只读**。完整结论见 `12-poc-findings.md`。
+> **实测基线**：本文档中标注【实】的 Windows 行为数据来自第一轮 PoC —— `poc/poc-results.json` ／ `poc/poc-run.log`；环境 **Windows 11 Build 26200（25H2）｜单显示器 1920×1080 @125%（120 DPI）｜探测进程 IL=Medium、未提权｜C#/.NET 10/FlaUI 5.0.0｜非侵入式只读**。完整结论见 `12-poc-findings.md`。PoC 原始数据文件因含个人数据（机器名/窗口标题）未入库，仅本地保留；结论已提炼进 `12-poc-findings.md`，文中 `poc/poc-results.json` 路径指本地文件。
 
 > ⚠️ **数字口径说明（两条，同样重要）**
 > **① 以磁盘文件为准**：进程级数据以 `poc/poc-results.json` 为准（IL 查询被拒 **135**、Medium=**103**、Untrusted=**25**、Low=**17**、High=**10**；UIA 隔离枚举 **551ms**，逐窗口合计 439ms）。团队沟通中曾出现 131 / 102 / 28 / 19 与 714ms 这**另一组**数字 —— 那是**上一轮运行**的快照（修复 `DwmGetWindowAttributeInt` 入口点 bug 后重跑过一次，磁盘文件为最新一轮，`meta.generated_at = 2026-09-22 16:30:28`）。两组各自成立，**本文件采用最新一轮**。

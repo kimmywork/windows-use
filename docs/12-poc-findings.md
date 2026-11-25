@@ -3,6 +3,8 @@
 > **性质**：非侵入式只读探测。用真实代码在真实机器上采集数据，用来验证/推翻 `11-assumptions-register.md` 里登记的假设。
 > **时间**：2026-09-22　｜　**代码**：`poc/WinUse.PoC/`（C# / .NET 10-windows / FlaUI 5.0.0）
 > **原始数据**：`poc/poc-results.json`（51KB，8 个探测器全量输出）　｜　**运行日志**：`poc/poc-run.log`
+>
+> ⚠️ **数据文件未入库**：`poc-results.json` / `poc-results.round1.json` / `poc-run-multimon.log` 含本机机器名、用户名与真实窗口标题（个人数据），已从版本库移除，**仅本地保留**（见 `.gitignore`）。本文结论已提炼自上述数据，文中引用路径指本地文件，供本地复现追溯。
 > **可信度标注**：本文所有结论均为 **【实】**（实测，附数据）；未测到的部分单独列在第 6 节，**不伪装成已解决**。
 
 ---
@@ -528,6 +530,8 @@ cd D:/Workspace/research/windows-use/poc/WinUse.PoC
 dotnet build -c Release
 dotnet bin/Release/net10.0-windows/WinUse.PoC.dll "../poc-results.json"
 ```
+
+> 注：`poc-results.json` 含个人数据未入库；运行上述命令会在本地重新生成，可直接对照。第二轮双屏基线备份 `poc-results.round1.json` 同理。
 
 探测器清单：
 
