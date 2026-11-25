@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>WinUse.Transport.Cli</RootNamespace>
+    <AssemblyName>WinUse.Transport.Cli</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WinUse.Core\WinUse.Core.csproj" />
+  </ItemGroup>
+
+</Project>

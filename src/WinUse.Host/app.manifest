@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="0.1.0.0" name="WinUse.Host" />
+
+  <!-- 不以管理员身份运行：WinUse 设计运行在 Medium IL（PoC C1）。 -->
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+
+  <!--
+    DPI 感知不在 manifest 声明：WinForms 工程以 WFO0003 拒绝 manifest DPI 设置；
+    由 Program 在任何窗口创建前调用 DpiAwareness.DeclarePerMonitorV2()（PoC C2）。
+  -->
+
+  <!-- 兼容性：Windows 10/11。 -->
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" /> <!-- Windows 10 & 11 -->
+    </application>
+  </compatibility>
+</assembly>

@@ -1,0 +1,2445 @@
+{
+  "summary": {
+    "total": 168,
+    "v1": 100,
+    "v1.5": 38,
+    "v2": 30,
+    "core": 46,
+    "extended": 48,
+    "advanced": 6,
+    "future": 68,
+    "core_ids": [
+      "clipboard.get",
+      "clipboard.set",
+      "dialog.button.click",
+      "dialog.detect",
+      "display.list",
+      "element.find",
+      "element.invoke",
+      "element.scroll",
+      "element.set_value",
+      "element.text.get",
+      "element.toggle",
+      "element.tree",
+      "file.copy",
+      "file.exists",
+      "file.list",
+      "file.mkdir",
+      "file.move",
+      "file.read",
+      "file.stat",
+      "file.write",
+      "filedialog.confirm",
+      "filedialog.set_path",
+      "keyboard.hotkey",
+      "keyboard.press",
+      "keyboard.type",
+      "macro.list",
+      "macro.run",
+      "mouse.click",
+      "mouse.move",
+      "mouse.scroll",
+      "ocr.recognize",
+      "process.list",
+      "process.start",
+      "screen.annotate",
+      "screen.capture",
+      "session.capabilities",
+      "session.hello",
+      "session.preflight",
+      "session.resume",
+      "system.info",
+      "wait.for",
+      "wait.idle",
+      "window.close",
+      "window.find",
+      "window.focus",
+      "window.list"
+    ],
+    "advanced_ids": [
+      "file.delete",
+      "mouse.drag",
+      "process.terminate",
+      "registry.get",
+      "shell.exec",
+      "system.power"
+    ]
+  },
+  "capabilities": [
+    {
+      "domain": "session",
+      "id": "session.hello",
+      "description": "握手（版本/权限模式/会话 ID）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "session.begin",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R001"
+    },
+    {
+      "domain": "session",
+      "id": "session.capabilities",
+      "description": "自描述能力目录（含 Schema/风险/幂等）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增（07 缺）",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R002"
+    },
+    {
+      "domain": "session",
+      "id": "session.preflight",
+      "description": "环境前置校验（锁屏/UAC/屏保/RDP/IL/显示器）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "system.environment",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R003"
+    },
+    {
+      "domain": "session",
+      "id": "session.status",
+      "description": "健康与负载（队列/当前动作/uptime）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R004"
+    },
+    {
+      "domain": "session",
+      "id": "session.set_mode",
+      "description": "切换权限模式 observe/standard/elevated",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "session.begin.approvalPolicy",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R005"
+    },
+    {
+      "domain": "session",
+      "id": "session.resume",
+      "description": "**恢复被 NEEDS_HUMAN 挂起的动作**（P11 挂起 ≠ 失败的另一半）",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增（02 §5.1 已由 PM 补入；见下方说明）",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R006"
+    },
+    {
+      "domain": "session",
+      "id": "session.subscribe",
+      "description": "事件订阅（SSE/WS）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R007"
+    },
+    {
+      "domain": "session",
+      "id": "session.cancel",
+      "description": "取消进行中动作",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "session.abort（提为 v1 子集）",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R008"
+    },
+    {
+      "domain": "system",
+      "id": "system.info",
+      "description": "OS 版本/构建/语言/区域/会话 ID/完整性级别",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "system.environment 子集",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R009"
+    },
+    {
+      "domain": "system",
+      "id": "system.idle",
+      "description": "用户输入空闲时长",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增（wait.idle 依赖）",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R010"
+    },
+    {
+      "domain": "system",
+      "id": "system.power",
+      "description": "电源状态查询",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "advanced",
+      "tech": "注：与 07 的 system.power（**关机/重启，R4**）**同名冲突** → 见下方 ⚠️",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R011"
+    },
+    {
+      "domain": "system",
+      "id": "system.setting.get",
+      "description": "读系统设置项",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R012"
+    },
+    {
+      "domain": "system",
+      "id": "system.setting.set",
+      "description": "写系统设置项",
+      "risk": "R4",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增（默认禁用）",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R013"
+    },
+    {
+      "domain": "system",
+      "id": "system.env.get",
+      "description": "读环境变量",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R014"
+    },
+    {
+      "domain": "display",
+      "id": "display.list",
+      "description": "显示器列表（bounds/work_area/primary/scale/dpi/朝向）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "system.displays",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R015"
+    },
+    {
+      "domain": "display",
+      "id": "display.dpi",
+      "description": "每显示器 DPI + 本进程感知等级 + 坐标系说明",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "system.displays",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R016"
+    },
+    {
+      "domain": "process",
+      "id": "process.list",
+      "description": "进程列表（含完整性级别）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "process.list",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R017"
+    },
+    {
+      "domain": "process",
+      "id": "process.start",
+      "description": "启动（exe/开始菜单项/UWP AUMID/关联打开）",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "core",
+      "tech": "process.launch / shell.open",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R018"
+    },
+    {
+      "domain": "process",
+      "id": "process.terminate",
+      "description": "温和终止",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "advanced",
+      "tech": "window.close(force)",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R019"
+    },
+    {
+      "domain": "process",
+      "id": "process.kill",
+      "description": "强制终止",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "process.terminate(force)",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R020"
+    },
+    {
+      "domain": "process",
+      "id": "process.wait",
+      "description": "等待进程状态",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R021"
+    },
+    {
+      "domain": "window",
+      "id": "window.list",
+      "description": "窗口列表（z-order/显示器/状态/虚拟桌面/进程）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "window.list",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R022"
+    },
+    {
+      "domain": "window",
+      "id": "window.find",
+      "description": "按条件查找（title/class/process）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "window.get",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R023"
+    },
+    {
+      "domain": "window",
+      "id": "window.focus",
+      "description": "激活到前台",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "window.activate",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R024"
+    },
+    {
+      "domain": "window",
+      "id": "window.state.get",
+      "description": "窗口状态与 rect/monitor",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "window.get",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R025"
+    },
+    {
+      "domain": "window",
+      "id": "window.minimize",
+      "description": "最小化",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "window.setPlacement",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R026"
+    },
+    {
+      "domain": "window",
+      "id": "window.maximize",
+      "description": "最大化",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "window.setPlacement",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R027"
+    },
+    {
+      "domain": "window",
+      "id": "window.restore",
+      "description": "还原",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "window.setPlacement",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R028"
+    },
+    {
+      "domain": "window",
+      "id": "window.close",
+      "description": "关闭",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "window.close",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R029"
+    },
+    {
+      "domain": "window",
+      "id": "window.move",
+      "description": "移动",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "window.setPlacement",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R030"
+    },
+    {
+      "domain": "window",
+      "id": "window.resize",
+      "description": "调整大小",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "window.setPlacement",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R031"
+    },
+    {
+      "domain": "window",
+      "id": "window.set_rect",
+      "description": "一次设置位置+尺寸",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "window.setPlacement",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R032"
+    },
+    {
+      "domain": "window",
+      "id": "window.snap",
+      "description": "贴靠布局（左/右/上/下/象限/最大化）",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R033"
+    },
+    {
+      "domain": "window",
+      "id": "window.send_to_monitor",
+      "description": "移到指定显示器（返回 DPI 变化后新尺寸）",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "window.setPlacement.monitorId",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R034"
+    },
+    {
+      "domain": "window",
+      "id": "window.virtual_desktop.get",
+      "description": "查询窗口所在虚拟桌面",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "system.virtualDesktops",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R035"
+    },
+    {
+      "domain": "window",
+      "id": "window.virtual_desktop.move",
+      "description": "移动窗口到指定虚拟桌面",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "system.virtualDesktops",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R036"
+    },
+    {
+      "domain": "window",
+      "id": "window.virtual_desktop.switch",
+      "description": "**切换**虚拟桌面",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "见 §16 显式不支持 #8",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R037"
+    },
+    {
+      "domain": "window",
+      "id": "window.wait",
+      "description": "等待窗口状态",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "window.wait",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R038"
+    },
+    {
+      "domain": "window",
+      "id": "window.tree",
+      "description": "窗口 UIA 子树（带 snapshot_id）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "element.tree",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R039"
+    },
+    {
+      "domain": "window",
+      "id": "window.capture",
+      "description": "窗口截图",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "screen.capture",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R040"
+    },
+    {
+      "domain": "element",
+      "id": "element.find",
+      "description": "选择器定位（含 require_unique）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "element.find",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R041"
+    },
+    {
+      "domain": "element",
+      "id": "element.count",
+      "description": "只问数量（消歧用，便宜）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R042"
+    },
+    {
+      "domain": "element",
+      "id": "element.get",
+      "description": "用稳定句柄取属性快照",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "element.get",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R043"
+    },
+    {
+      "domain": "element",
+      "id": "element.tree",
+      "description": "子树快照 / diff（since）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "element.tree",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R044"
+    },
+    {
+      "domain": "element",
+      "id": "element.property.get",
+      "description": "读指定属性",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "element.get",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R045"
+    },
+    {
+      "domain": "element",
+      "id": "element.wait",
+      "description": "等待元素状态",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "element.wait",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R046"
+    },
+    {
+      "domain": "element",
+      "id": "element.invoke",
+      "description": "UIA InvokePattern（首选，可绕 UIPI）",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "element.invoke",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R047"
+    },
+    {
+      "domain": "element",
+      "id": "element.set_value",
+      "description": "UIA ValuePattern 设值",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "text.set(strategy=valuePattern)",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R048"
+    },
+    {
+      "domain": "element",
+      "id": "element.set_range_value",
+      "description": "滑块/数值/进度",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R049"
+    },
+    {
+      "domain": "element",
+      "id": "element.toggle",
+      "description": "勾选/开关",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "element.invoke(action=toggle)",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R050"
+    },
+    {
+      "domain": "element",
+      "id": "element.select",
+      "description": "列表/树/标签选择",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "element.invoke(action=select)",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R051"
+    },
+    {
+      "domain": "element",
+      "id": "element.expand_collapse",
+      "description": "树/组合框展开收起",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "element.invoke(action=expand)",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R052"
+    },
+    {
+      "domain": "element",
+      "id": "element.scroll",
+      "description": "滚动 / 滚动到可见",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "element.scroll",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R053"
+    },
+    {
+      "domain": "element",
+      "id": "element.focus",
+      "description": "设置键盘焦点",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "element.focus",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R054"
+    },
+    {
+      "domain": "element",
+      "id": "element.text.get",
+      "description": "读文本（TextPattern）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "text.readback",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R055"
+    },
+    {
+      "domain": "element",
+      "id": "element.caret.get",
+      "description": "读字符级光标位置",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增（OSWorld-G 列为精细操作）",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R056"
+    },
+    {
+      "domain": "element",
+      "id": "element.caret.set",
+      "description": "设字符级光标位置",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R057"
+    },
+    {
+      "domain": "element",
+      "id": "element.selection.get",
+      "description": "读文本选区",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "text.selection(get)",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R058"
+    },
+    {
+      "domain": "element",
+      "id": "element.selection.set",
+      "description": "设文本选区",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "text.selection(set)",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R059"
+    },
+    {
+      "domain": "element",
+      "id": "element.rect",
+      "description": "几何矩形",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "element.get.rect",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R060"
+    },
+    {
+      "domain": "element",
+      "id": "element.center",
+      "description": "中心点",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "mouse.click(elementId)",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R061"
+    },
+    {
+      "domain": "element",
+      "id": "element.highlight",
+      "description": "调试高亮",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "element.highlight",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R062"
+    },
+    {
+      "domain": "element",
+      "id": "element.exists",
+      "description": "是否存在",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R063"
+    },
+    {
+      "domain": "mouse",
+      "id": "mouse.position.get",
+      "description": "当前光标位置",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "mouse.position",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R064"
+    },
+    {
+      "domain": "mouse",
+      "id": "mouse.move",
+      "description": "移动（绝对/相对/smooth）",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "mouse.move",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R065"
+    },
+    {
+      "domain": "mouse",
+      "id": "mouse.click",
+      "description": "点击",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "core",
+      "tech": "mouse.click",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R066"
+    },
+    {
+      "domain": "mouse",
+      "id": "mouse.down",
+      "description": "按下",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "mouse.drag 首段",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R067"
+    },
+    {
+      "domain": "mouse",
+      "id": "mouse.up",
+      "description": "释放",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "mouse.drag 尾段",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R068"
+    },
+    {
+      "domain": "mouse",
+      "id": "mouse.drag",
+      "description": "拖拽",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "advanced",
+      "tech": "mouse.drag",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R069"
+    },
+    {
+      "domain": "mouse",
+      "id": "mouse.scroll",
+      "description": "滚轮（lines/pixels）",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "mouse.wheel",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R070"
+    },
+    {
+      "domain": "mouse",
+      "id": "mouse.hover",
+      "description": "悬停（含 tooltip 等待）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R071"
+    },
+    {
+      "domain": "keyboard",
+      "id": "keyboard.type",
+      "description": "Unicode 直注（KEYEVENTF_UNICODE，绕过 IME）",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "core",
+      "tech": "text.set/text.append",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R072"
+    },
+    {
+      "domain": "keyboard",
+      "id": "keyboard.press",
+      "description": "单键",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "core",
+      "tech": "keyboard.press",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R073"
+    },
+    {
+      "domain": "keyboard",
+      "id": "keyboard.hotkey",
+      "description": "组合键",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "core",
+      "tech": "keyboard.press(modifiers)",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R074"
+    },
+    {
+      "domain": "keyboard",
+      "id": "keyboard.down",
+      "description": "按下保持",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "keyboard.hold",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R075"
+    },
+    {
+      "domain": "keyboard",
+      "id": "keyboard.up",
+      "description": "释放",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "keyboard.release",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R076"
+    },
+    {
+      "domain": "keyboard",
+      "id": "keyboard.type_pinyin",
+      "description": "**走 IME 的真实中文输入**（测试/特殊场景）",
+      "risk": "R2",
+      "idempotency": "N",
+      "since": "v2",
+      "tier": "future",
+      "tech": "text.typeByKeystroke（中文场景**禁用**）",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R077"
+    },
+    {
+      "domain": "keyboard",
+      "id": "keyboard.ime.status",
+      "description": "IME 状态（输入法/中英/是否组字/候选可见）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "system.imeState",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R078"
+    },
+    {
+      "domain": "keyboard",
+      "id": "keyboard.ime.set",
+      "description": "切换中/英或输入法（**自动记录并恢复**）",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "07 明确不提供 → **依 02 口径补回，但默认禁用**",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R079"
+    },
+    {
+      "domain": "keyboard",
+      "id": "keyboard.ime.candidates",
+      "description": "读候选词",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增（UIA 覆盖不稳，标 ⚠️）",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R080"
+    },
+    {
+      "domain": "clipboard",
+      "id": "clipboard.get",
+      "description": "读剪贴板",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "clipboard.get",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R081"
+    },
+    {
+      "domain": "clipboard",
+      "id": "clipboard.set",
+      "description": "写剪贴板（**默认记录并恢复**）",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "clipboard.set + clipboard.save/restore",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R082"
+    },
+    {
+      "domain": "clipboard",
+      "id": "clipboard.formats",
+      "description": "可用格式列表",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R083"
+    },
+    {
+      "domain": "clipboard",
+      "id": "clipboard.clear",
+      "description": "清空",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R084"
+    },
+    {
+      "domain": "clipboard",
+      "id": "clipboard.history",
+      "description": "Win+V 历史",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R085"
+    },
+    {
+      "domain": "screen",
+      "id": "screen.capture",
+      "description": "截图（**默认只返标注元数据，不含图像**）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "screen.capture",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R086"
+    },
+    {
+      "domain": "screen",
+      "id": "screen.annotate",
+      "description": "SoM 标注（编号→元素映射）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "vision.annotate",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R087"
+    },
+    {
+      "domain": "screen",
+      "id": "screen.diff",
+      "description": "两快照差异区域",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "screen.diff",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R088"
+    },
+    {
+      "domain": "screen",
+      "id": "screen.locate",
+      "description": "模板匹配定位（OpenCV）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "vision.locate",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R089"
+    },
+    {
+      "domain": "screen",
+      "id": "screen.pixel",
+      "description": "取色",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R090"
+    },
+    {
+      "domain": "ocr",
+      "id": "ocr.recognize",
+      "description": "区域 OCR（中英）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "vision.ocr",
+      "layers": [
+        "PIXEL"
+      ],
+      "ref": "R091"
+    },
+    {
+      "domain": "file",
+      "id": "file.list",
+      "description": "列目录",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "file.list",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R092"
+    },
+    {
+      "domain": "file",
+      "id": "file.stat",
+      "description": "元信息（**P17 主要验证手段**）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增（**重要**：独立验证主力）",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R093"
+    },
+    {
+      "domain": "file",
+      "id": "file.exists",
+      "description": "存在性",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R094"
+    },
+    {
+      "domain": "file",
+      "id": "file.read",
+      "description": "读文件（含 GBK 编码）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "file.read",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R095"
+    },
+    {
+      "domain": "file",
+      "id": "file.write",
+      "description": "写文件（**事务内默认备份原内容**）",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "file.write",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R096"
+    },
+    {
+      "domain": "file",
+      "id": "file.copy",
+      "description": "复制",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "file.copy",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R097"
+    },
+    {
+      "domain": "file",
+      "id": "file.move",
+      "description": "移动",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "file.move",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R098"
+    },
+    {
+      "domain": "file",
+      "id": "file.rename",
+      "description": "重命名",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R099"
+    },
+    {
+      "domain": "file",
+      "id": "file.delete",
+      "description": "删除（**默认回收站**）",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "advanced",
+      "tech": "file.delete",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R100"
+    },
+    {
+      "domain": "file",
+      "id": "file.mkdir",
+      "description": "建目录",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R101"
+    },
+    {
+      "domain": "file",
+      "id": "file.rmdir",
+      "description": "删目录",
+      "risk": "R3",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R102"
+    },
+    {
+      "domain": "file",
+      "id": "file.watch",
+      "description": "目录变更订阅",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R103"
+    },
+    {
+      "domain": "file",
+      "id": "file.archive",
+      "description": "压缩",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R104"
+    },
+    {
+      "domain": "file",
+      "id": "file.unarchive",
+      "description": "解压",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R105"
+    },
+    {
+      "domain": "file",
+      "id": "file.recycle.list",
+      "description": "回收站列表",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R106"
+    },
+    {
+      "domain": "file",
+      "id": "file.recycle.restore",
+      "description": "回收站还原",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R107"
+    },
+    {
+      "domain": "file",
+      "id": "file.recycle.empty",
+      "description": "清空回收站",
+      "risk": "R3",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R108"
+    },
+    {
+      "domain": "file",
+      "id": "file.wait_stable",
+      "description": "等待文件大小稳定（下载完成判定）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R109"
+    },
+    {
+      "domain": "dialog",
+      "id": "dialog.detect",
+      "description": "检测模态阻断（UAC/文件对话框/消息框/应用模态）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增（见 §17）",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R110"
+    },
+    {
+      "domain": "dialog",
+      "id": "dialog.wait",
+      "description": "等待对话框出现/消失",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R111"
+    },
+    {
+      "domain": "dialog",
+      "id": "dialog.dismiss",
+      "description": "关闭（Esc/取消/X）",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R112"
+    },
+    {
+      "domain": "dialog",
+      "id": "dialog.button.click",
+      "description": "按名称点按钮（支持多语言别名+模糊）",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R113"
+    },
+    {
+      "domain": "filedialog",
+      "id": "filedialog.set_path",
+      "description": "设置文件路径（Windows 高频专化能力）",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R114"
+    },
+    {
+      "domain": "filedialog",
+      "id": "filedialog.confirm",
+      "description": "确认（含覆盖确认连环框处理）",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R115"
+    },
+    {
+      "domain": "filedialog",
+      "id": "filedialog.cancel",
+      "description": "取消",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R116"
+    },
+    {
+      "domain": "browser",
+      "id": "browser.tabs.list",
+      "description": "列标签页",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "browser.tabs",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R117"
+    },
+    {
+      "domain": "browser",
+      "id": "browser.tabs.open",
+      "description": "打开标签页",
+      "risk": "R1",
+      "idempotency": "N",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R118"
+    },
+    {
+      "domain": "browser",
+      "id": "browser.tabs.close",
+      "description": "关闭标签页",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R119"
+    },
+    {
+      "domain": "browser",
+      "id": "browser.tabs.switch",
+      "description": "切换标签页",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R120"
+    },
+    {
+      "domain": "browser",
+      "id": "browser.navigate",
+      "description": "导航",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "browser.navigate",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R121"
+    },
+    {
+      "domain": "browser",
+      "id": "browser.cdp.attach",
+      "description": "**CDP 逃逸口**（需授权，可能要求带端口重启）",
+      "risk": "R2",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "browser.attach",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R122"
+    },
+    {
+      "domain": "browser",
+      "id": "browser.cdp.call",
+      "description": "透传 CDP 命令",
+      "risk": "R3",
+      "idempotency": "N",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "browser.evaluate 等泛化",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R123"
+    },
+    {
+      "domain": "browser",
+      "id": "browser.dom.get",
+      "description": "DOM 快照（需授权）",
+      "risk": "R2",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "browser.axTree",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R124"
+    },
+    {
+      "domain": "shell",
+      "id": "shell.exec",
+      "description": "同步执行命令（cmd/pwsh）",
+      "risk": "R3",
+      "idempotency": "N",
+      "since": "v1",
+      "tier": "advanced",
+      "tech": "shell.exec",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R125"
+    },
+    {
+      "domain": "shell",
+      "id": "shell.exec_async",
+      "description": "异步执行",
+      "risk": "R3",
+      "idempotency": "N",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R126"
+    },
+    {
+      "domain": "shell",
+      "id": "shell.job.status",
+      "description": "任务状态",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R127"
+    },
+    {
+      "domain": "shell",
+      "id": "shell.job.read",
+      "description": "读增量输出",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R128"
+    },
+    {
+      "domain": "shell",
+      "id": "shell.job.cancel",
+      "description": "取消任务",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R129"
+    },
+    {
+      "domain": "console",
+      "id": "console.attach",
+      "description": "附加到交互式会话（ConPTY）",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增（见 §18）",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R130"
+    },
+    {
+      "domain": "console",
+      "id": "console.detach",
+      "description": "分离",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R131"
+    },
+    {
+      "domain": "console",
+      "id": "console.read_buffer",
+      "description": "读终端屏缓冲（**ConPTY 下仅视口，无 scrollback**）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R132"
+    },
+    {
+      "domain": "console",
+      "id": "console.send",
+      "description": "向交互 shell 发送输入",
+      "risk": "R2",
+      "idempotency": "N",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R133"
+    },
+    {
+      "domain": "registry",
+      "id": "registry.get",
+      "description": "读注册表",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "advanced",
+      "tech": "新增（**P0 补充项**）",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R134"
+    },
+    {
+      "domain": "registry",
+      "id": "registry.set",
+      "description": "写注册表（**standard 模式下默认拒绝**）",
+      "risk": "R4",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R135"
+    },
+    {
+      "domain": "registry",
+      "id": "registry.delete",
+      "description": "删注册表",
+      "risk": "R4",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R136"
+    },
+    {
+      "domain": "toast",
+      "id": "toast.list",
+      "description": "Toast 列表",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "system.notifications",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R137"
+    },
+    {
+      "domain": "toast",
+      "id": "toast.dismiss",
+      "description": "关闭 Toast",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R138"
+    },
+    {
+      "domain": "toast",
+      "id": "toast.click",
+      "description": "点击 Toast",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R139"
+    },
+    {
+      "domain": "tray",
+      "id": "tray.list",
+      "description": "托盘图标列表（含溢出区）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R140"
+    },
+    {
+      "domain": "tray",
+      "id": "tray.click",
+      "description": "点击托盘图标",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R141"
+    },
+    {
+      "domain": "tray",
+      "id": "tray.context_menu",
+      "description": "托盘右键菜单",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R142"
+    },
+    {
+      "domain": "taskbar",
+      "id": "taskbar.list",
+      "description": "任务栏列表",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R143"
+    },
+    {
+      "domain": "taskbar",
+      "id": "taskbar.click",
+      "description": "点击任务栏",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R144"
+    },
+    {
+      "domain": "startmenu",
+      "id": "startmenu.search",
+      "description": "开始菜单搜索并启动",
+      "risk": "R1",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "process.start(AUMID) 子集",
+      "layers": [
+        "UIA"
+      ],
+      "ref": "R145"
+    },
+    {
+      "domain": "macro",
+      "id": "macro.list",
+      "description": "发现内置与自定义宏",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增（见 §20）",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R146"
+    },
+    {
+      "domain": "macro",
+      "id": "macro.describe",
+      "description": "宏详情 + Schema",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R147"
+    },
+    {
+      "domain": "macro",
+      "id": "macro.run",
+      "description": "执行宏（含 items 批量 + on_error）",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R148"
+    },
+    {
+      "domain": "macro",
+      "id": "macro.record_start",
+      "description": "开始录制演示",
+      "risk": "R2",
+      "idempotency": "N",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "session.record",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R149"
+    },
+    {
+      "domain": "macro",
+      "id": "macro.record_stop",
+      "description": "停止录制",
+      "risk": "R2",
+      "idempotency": "N",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "session.record(stop)",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R150"
+    },
+    {
+      "domain": "macro",
+      "id": "macro.record_save",
+      "description": "保存为宏定义",
+      "risk": "R2",
+      "idempotency": "N",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R151"
+    },
+    {
+      "domain": "transaction",
+      "id": "transaction.begin",
+      "description": "开启事务",
+      "risk": "R2",
+      "idempotency": "N",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增（见 §20）",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R152"
+    },
+    {
+      "domain": "transaction",
+      "id": "transaction.commit",
+      "description": "提交",
+      "risk": "R2",
+      "idempotency": "N",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R153"
+    },
+    {
+      "domain": "transaction",
+      "id": "transaction.rollback",
+      "description": "回滚（**部分回滚须报 ROLLBACK_PARTIAL**）",
+      "risk": "R2",
+      "idempotency": "N",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R154"
+    },
+    {
+      "domain": "undo",
+      "id": "undo.stack",
+      "description": "当前可撤销栈",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R155"
+    },
+    {
+      "domain": "undo",
+      "id": "undo.undo",
+      "description": "撤销",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R156"
+    },
+    {
+      "domain": "undo",
+      "id": "undo.redo",
+      "description": "重做",
+      "risk": "R2",
+      "idempotency": "C",
+      "since": "v2",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R157"
+    },
+    {
+      "domain": "audit",
+      "id": "audit.query",
+      "description": "查询审计日志",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "session.log",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R158"
+    },
+    {
+      "domain": "audit",
+      "id": "audit.export",
+      "description": "导出审计",
+      "risk": "R1",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "session.log(export)",
+      "layers": [
+        "WIN32"
+      ],
+      "ref": "R159"
+    },
+    {
+      "domain": "wait",
+      "id": "wait.for",
+      "description": "**统一条件等待**（元素/窗口/进程/文件/文本/剪贴板）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增（见 §16）",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R160"
+    },
+    {
+      "domain": "wait",
+      "id": "wait.idle",
+      "description": "空闲等待（input_idle / cpu_idle）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "core",
+      "tech": "新增",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R161"
+    },
+    {
+      "domain": "wait",
+      "id": "wait.stable",
+      "description": "防抖稳定等待",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "screen.waitStable 泛化",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R162"
+    },
+    {
+      "domain": "wait",
+      "id": "wait.timeout",
+      "description": "固定等待（**不推荐，审计中标记**）",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "新增",
+      "layers": [
+        "UIA",
+        "WIN32"
+      ],
+      "ref": "R163"
+    },
+    {
+      "domain": "office",
+      "id": "office.attach",
+      "description": "连接 Office 应用",
+      "risk": "R0",
+      "idempotency": "I",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "office.attach",
+      "layers": [
+        "COM"
+      ],
+      "ref": "R164"
+    },
+    {
+      "domain": "office",
+      "id": "office.excel.range",
+      "description": "读写 Excel 区域",
+      "risk": "R0",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "office.excel.range",
+      "layers": [
+        "COM"
+      ],
+      "ref": "R165"
+    },
+    {
+      "domain": "office",
+      "id": "office.word.text",
+      "description": "读写 Word 文本",
+      "risk": "R0",
+      "idempotency": "C",
+      "since": "v1",
+      "tier": "extended",
+      "tech": "office.word.text",
+      "layers": [
+        "COM"
+      ],
+      "ref": "R166"
+    },
+    {
+      "domain": "office",
+      "id": "office.outlook.send",
+      "description": "撰写/发送邮件（mode=draft 默认）",
+      "risk": "R3",
+      "idempotency": "N",
+      "since": "v2",
+      "tier": "future",
+      "tech": "office.outlook.send",
+      "layers": [
+        "COM"
+      ],
+      "ref": "R167"
+    },
+    {
+      "domain": "office",
+      "id": "office.wps",
+      "description": "WPS COM 兼容层",
+      "risk": "R2",
+      "idempotency": "N",
+      "since": "v1.5",
+      "tier": "future",
+      "tech": "新增",
+      "layers": [
+        "COM"
+      ],
+      "ref": "R168"
+    }
+  ]
+}

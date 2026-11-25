@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>WinUse.Platform.Windows</RootNamespace>
+    <AssemblyName>WinUse.Platform.Windows</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>false</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WinUse.Core\WinUse.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 能力实现类保持 internal，仅对 Host（程序集名 winuse）可见。 -->
+    <InternalsVisibleTo Include="winuse" />
+  </ItemGroup>
+
+</Project>

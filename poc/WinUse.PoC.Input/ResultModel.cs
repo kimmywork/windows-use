@@ -107,7 +107,7 @@ internal sealed class NotepadTarget
     public int[] MainWindowRect { get; set; } = Array.Empty<int>();
     public bool SelfStarted { get; set; }
     public string LaunchDetail { get; set; } = "";
-    public bool UiAutomationDocumentFound { get; set; } = "";
+    public bool UiAutomationDocumentFound { get; set; } = false;
 }
 
 internal sealed class ImeContextRecord

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>WinUse.Host</RootNamespace>
+    <AssemblyName>winuse</AssemblyName>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>false</UseWPF>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WinUse.Core\WinUse.Core.csproj" />
+    <ProjectReference Include="..\WinUse.Platform.Windows\WinUse.Platform.Windows.csproj" />
+    <ProjectReference Include="..\WinUse.Transport.Http\WinUse.Transport.Http.csproj" />
+    <ProjectReference Include="..\WinUse.Transport.Cli\WinUse.Transport.Cli.csproj" />
+  </ItemGroup>
+
+</Project>

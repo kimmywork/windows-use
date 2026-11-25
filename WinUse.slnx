@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WinUse.Core/WinUse.Core.csproj" />
+    <Project Path="src/WinUse.Host/WinUse.Host.csproj" />
+    <Project Path="src/WinUse.Platform.Windows/WinUse.Platform.Windows.csproj" />
+    <Project Path="src/WinUse.Transport.Cli/WinUse.Transport.Cli.csproj" />
+    <Project Path="src/WinUse.Transport.Http/WinUse.Transport.Http.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WinUse.Core.Tests/WinUse.Core.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,9 +1,9 @@
-// WinUse.PoC.Input.csproj — 第二轮 B：侵入式实测工程（A-05 中文输入 + A-02 负坐标可达性）
-//
-// 注意：不可使用 `dotnet new console -f net10.0-windows`（SDK 10 不接受该形式），
-// 因此本文件手工编写，TargetFramework 直接写 net10.0-windows。
-// 不引用 WindowsForms / WPF：剪贴板走原生 API，避免引入桌面运行包依赖。
+<!-- WinUse.PoC.Input.csproj — 第二轮 B：侵入式实测工程（A-05 中文输入 + A-02 负坐标可达性）
 
+     注意：不可使用 `dotnet new console -f net10.0-windows`（SDK 10 不接受该形式），
+     因此本文件手工编写，TargetFramework 直接写 net10.0-windows。
+     不引用 WindowsForms / WPF：剪贴板走原生 API，避免引入桌面运行包依赖。
+     另：csproj 是 XML，注释必须用 XML 注释语法，不能用双斜杠（否则报 MSB4025）。 -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>

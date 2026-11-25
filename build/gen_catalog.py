@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Parse the authoritative capability tables (§0.7.1–§0.7.11) from
+docs/07-capability-registry.md and emit:
+  - build/capabilities.json
+  - src/WinUse.Core/Capabilities/CapabilityCatalog.g.cs
+
+Design refs:
+  - 09-roadmap.md §2: "CapabilityRegistry ... 由构建期代码生成，禁止硬编码"
+  - 07-capability-registry.md §0.7: authoritative split; §0.7.13 tier authority
+Expected counts (§0.7.12 / §0.7.13): total 168 | v1 100 | v1.5 38 | v2 30
+                                     core 46 | extended 48 | advanced 6 | future 68
+Malformed rows are reported, never silently dropped.
+"""
+import json
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+DOC = ROOT / "docs" / "07-capability-registry.md"
+OUT_JSON = ROOT / "build" / "capabilities.json"
+OUT_CS = ROOT / "src" / "WinUse.Core" / "Capabilities" / "CapabilityCatalog.g.cs"
+
+# Domain -> default grounding layers (07 §0.7 has no layer column; derive from domain).
+DOMAIN_LAYERS = {
+    "session": ["WIN32"],
+    "system": ["WIN32"],
+    "display": ["WIN32"],
+    "process": ["WIN32"],
+    "window": ["UIA", "WIN32"],
+    "element": ["UIA"],
+    "mouse": ["PIXEL"],
+    "keyboard": ["PIXEL"],
+    "text": ["PIXEL", "UIA"],
+    "clipboard": ["WIN32"],
+    "screen": ["PIXEL"],
+    "ocr": ["PIXEL"],
+    "file": ["WIN32"],
+    "dialog": ["UIA"],
+    "filedialog": ["UIA"],
+    "office": ["COM"],
+    "browser": ["WIN32"],
+    "shell": ["WIN32"],
+    "console": ["WIN32"],
+    "registry": ["WIN32"],
+    "toast": ["UIA"],
+    "tray": ["UIA"],
+    "taskbar": ["UIA"],
+    "startmenu": ["UIA"],
+    "macro": ["WIN32"],
+    "transaction": ["WIN32"],
+    "undo": ["WIN32"],
+    "audit": ["WIN32"],
+    "wait": ["UIA", "WIN32"],
+}
+
+
+def clean(cell: str) -> str:
+    cell = cell.strip()
+    cell = re.sub(r"^\*\*(.+?)\*\*$", r"\1", cell)
+    cell = cell.replace("`", "").replace("<br>", " ").replace("<br/>", " ")
+    cell = re.sub(r"\s+", " ", cell)
+    return cell.strip()
+
+
+def parse_risk(cell: str) -> str:
+    nums = [int(n) for n in re.findall(r"R([0-4])", cell)]
+    if not nums:
+        return "R2"  # conservative default
+    return f"R{min(nums)}"  # static baseline = lowest; dynamic escalation may raise
+
+
+def parse_idem(cell: str) -> str:
+    c = cell.strip()
+    if c.startswith("I"):
+        return "I"
+    if c.startswith("C"):
+        return "C"
+    if c.startswith("N"):
+        return "N"
+    return "N"  # conservative default
+
+
+def parse_since(cell: str) -> str:
+    if "v1.5" in cell:
+        return "v1.5"
+    if "v2" in cell:
+        return "v2"
+    if "v1" in cell:
+        return "v1"
+    return ""
+
+
+def parse_tier(cell: str):
+    c = cell.lower()
+    for t in ("core", "extended", "advanced", "future"):
+        if t in c:
+            return t
+    return None
+
+
+def parse_row(cells, line_no, warnings):
+    # Standard table: 8 cols (id, name, risk, idem, p, since, tier, tech)
+    # Office table: 7 cols (id, name, risk, idem, since, tier, tech)
+    if len(cells) == 7:
+        cells = cells[:4] + [""] + cells[4:]
+    if len(cells) < 8:
+        warnings.append((line_no, cells))
+        return None
+    cap_id = cells[0]
+    cap_id = re.split(r"[（(]", cap_id)[0]  # drop annotations like （WPS 适配）
+    cap_id = re.sub(r"\.\*$", "", cap_id)  # office.wps.* -> office.wps
+    cap_id = cap_id.rstrip(".")
+    m = re.match(r"([a-z0-9_]+)\.([a-z0-9_]+(?:\.[a-z0-9_]+)?)$", cap_id)
+    if not m:
+        warnings.append((line_no, cells))
+        return None
+    domain = m.group(1)
+    since = parse_since(cells[5])
+    if not since:
+        warnings.append((line_no, cells))
+        return None
+    return {
+        "domain": domain,
+        "id": cap_id,
+        "description": cells[1],
+        "risk": parse_risk(cells[2]),
+        "idempotency": parse_idem(cells[3]),
+        "since": since,
+        "tier": parse_tier(cells[6]) or "future",
+        "tech": cells[7] if len(cells) > 7 else "",
+        "layers": DOMAIN_LAYERS.get(domain, ["WIN32"]),
+    }
+
+
+def parse():
+    lines = DOC.read_text(encoding="utf-8").splitlines()
+    rows, warnings = [], []
+    in_section = False
+    for i, line in enumerate(lines):
+        if line.startswith("#### 0.7."):
+            in_section = True
+            continue
+        if in_section and line.startswith("#### 0.7.12"):
+            break
+        if not in_section or not line.startswith("|"):
+            continue
+        cells = [clean(c) for c in line.strip().strip("|").split("|")]
+        if not cells or cells[0] in ("权威 ID",):
+            continue
+        if set("".join(cells)) <= set("-: "):
+            continue
+        row = parse_row(cells, i + 1, warnings)
+        if row:
+            row["ref"] = f"R{len(rows) + 1:03d}"
+            rows.append(row)
+    return rows, warnings
+
+
+def cs_escape(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def emit_cs(rows):
+    L = []
+    L.append("// <auto-generated/>")
+    L.append("// Generated by build/gen_catalog.py from docs/07-capability-registry.md §0.7.")
+    L.append("// Do not edit by hand; regenerate: python build/gen_catalog.py")
+    L.append("#nullable enable")
+    L.append("using WinUse.Core.Protocol;")
+    L.append("namespace WinUse.Core.Capabilities;")
+    L.append("")
+    L.append("internal static partial class CapabilityCatalogGenerated")
+    L.append("{")
+    L.append("    public static CapabilityDescriptor[] CreateDescriptors() => new CapabilityDescriptor[]")
+    L.append("    {")
+    for r in rows:
+        layers = ", ".join(f"Layer.{l}" for l in r["layers"])
+        L.append(
+            f'        new("{r["id"]}", "{r["since"]}", Tier.{r["tier"].capitalize()}, '
+            f'RiskLevel.{r["risk"]}, Idempotency.{r["idempotency"]}, '
+            f'new[] {{ {layers} }}, "{cs_escape(r["description"])}"),'
+        )
+    L.append("    };")
+    L.append("}")
+    L.append("")
+    return "\n".join(L)
+
+
+def main():
+    rows, warnings = parse()
+    def ids(pred):
+        return sorted(r["id"] for r in rows if pred(r))
+    summary = {
+        "total": len(rows),
+        "v1": len(ids(lambda r: r["since"] == "v1")),
+        "v1.5": len(ids(lambda r: r["since"] == "v1.5")),
+        "v2": len(ids(lambda r: r["since"] == "v2")),
+        "core": len(ids(lambda r: r["tier"] == "core")),
+        "extended": len(ids(lambda r: r["tier"] == "extended")),
+        "advanced": len(ids(lambda r: r["tier"] == "advanced")),
+        "future": len(ids(lambda r: r["tier"] == "future")),
+        "core_ids": ids(lambda r: r["tier"] == "core"),
+        "advanced_ids": ids(lambda r: r["tier"] == "advanced"),
+    }
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
+    if warnings:
+        print("\n[WARN] unparsed rows:", file=sys.stderr)
+        for ln, cells in warnings:
+            print(f"  line {ln}: {cells}", file=sys.stderr)
+    OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
+    OUT_JSON.write_text(
+        json.dumps({"summary": summary, "capabilities": rows}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    OUT_CS.parent.mkdir(parents=True, exist_ok=True)
+    OUT_CS.write_text(emit_cs(rows), encoding="utf-8")
+    print(f"\nwrote {OUT_JSON}\nwrote {OUT_CS}")
+
+
+if __name__ == "__main__":
+    main()

@@ -144,6 +144,9 @@ internal static class Native
     [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
 
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
     [DllImport("user32.dll")]
     public static extern IntPtr GetParent(IntPtr hWnd);
 
@@ -209,6 +212,50 @@ internal static class Native
     public const uint WM_CLOSE = 0x0010;
     public const uint EM_SETMODIFY = 0x00B9;   // 关闭时的"是否保存"对话框依赖该脏标记
     public const uint BM_CLICK = 0x00F5;
+
+    // 字符投递通道诊断用
+    public const uint WM_CHAR = 0x0102;
+    public const uint WM_UNICHAR = 0x0109;
+    public const uint WM_IME_CHAR = 0x0286;
+    public const uint WM_DEADCHAR = 0x0103;
+    public const uint WM_SYSCHAR = 0x0106;
+    public const uint WM_KEYDOWN = 0x0100;
+    public const uint VK_PACKET = 0x00E7;
+
+    // 子类化支持：为了抓 EDIT 实际收到的 WM_CHAR wParam
+    [DllImport("kernel32.dll")]
+    public static extern uint GetACP();
+
+    // 键盘布局（线程级）。KEYEVENTF_UNICODE 的 WM_CHAR 生成发生在 TranslateMessage，
+    // 用的是「调用线程的键盘布局所对应代码页」，不是进程 ACP —— 需要能改它来做对照。
+    public const uint KLF_ACTIVATE = 0x00000001;
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "LoadKeyboardLayoutW", ExactSpelling = true)]
+    public static extern IntPtr LoadKeyboardLayout(string pwszKLID, uint Flags);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr ActivateKeyboardLayout(IntPtr hkl, uint Flags);
+    // GetKeyboardLayout 在本文件后面已声明（线程级布局读取），此处不再重复。
+
+    public const int GWLP_WNDPROC = -4;
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowUnicode(IntPtr hWnd);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
+    public static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")]
+    public static extern IntPtr GetWindowLongPtr64(IntPtr hWnd, int nIndex);
+
+    public static IntPtr SetWindowSubclassProc(IntPtr hWnd, IntPtr newProc)
+        => SetWindowLongPtr64(hWnd, GWLP_WNDPROC, newProc);
+
+    public static IntPtr GetWindowSubclassProc(IntPtr hWnd)
+        => GetWindowLongPtr64(hWnd, GWLP_WNDPROC);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     public const uint SMTO_ABORTIFHUNG = 0x0002;
     public const uint DefaultMessageTimeoutMs = 2000;
